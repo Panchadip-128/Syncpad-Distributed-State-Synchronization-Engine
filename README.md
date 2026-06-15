@@ -16,7 +16,7 @@
 [![CI](https://github.com/Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Compose_Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](#-docker-deployment)
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/syncpad?referralCode=syncpad)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.app/new?repo=Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine&root-directory=apps/web)
 
 [Live Demo](#quick-start) · [Architecture](#system-architecture) · [Technical Deep-Dive](#technical-deep-dive) · [Setup](#quick-start)
