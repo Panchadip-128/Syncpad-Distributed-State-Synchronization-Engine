@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+from fastapi import Query as QueryParam
 
 from database import get_db
 from models import Document, User, Snapshot
@@ -53,10 +54,12 @@ async def create_document(doc_data: DocumentCreate, db: AsyncSession = Depends(g
     return new_doc
 
 @router.get("", response_model=List[DocumentResponse])
-async def list_documents(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    result = await db.execute(
-        select(Document).where(Document.owner_id == current_user.id).order_by(Document.updated_at.desc())
-    )
+async def list_documents(q: Optional[str] = QueryParam(None, description="Search documents by title"), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = select(Document).where(Document.owner_id == current_user.id)
+    if q:
+        query = query.where(Document.title.ilike(f"%{q}%"))
+    query = query.order_by(Document.updated_at.desc())
+    result = await db.execute(query)
     return result.scalars().all()
 
 @router.get("/{doc_id}", response_model=DocumentResponse)

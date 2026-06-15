@@ -13,6 +13,12 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 
+[![CI](https://github.com/Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/Docker-Compose_Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](#-docker-deployment)
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/syncpad?referralCode=syncpad)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Panchadip-128/Syncpad-Distributed-State-Synchronization-Engine&root-directory=apps/web)
+
 [Live Demo](#quick-start) · [Architecture](#system-architecture) · [Technical Deep-Dive](#technical-deep-dive) · [Setup](#quick-start)
 
 </div>
@@ -139,6 +145,34 @@ Tiptap re-renders — 'H' appears instantly
 - Custom design system with glow effects, shimmer loading states, and micro-animations
 - Fully responsive with dark mode
 
+### 🔍 Document Search
+- **Debounced live search** — server-side filtering with 300ms debounce
+- **Highlighted matches** — search terms highlighted in document titles
+- **Loading spinner** — visual feedback during search API calls
+
+### 📤 Document Export
+- **Markdown export** — converts rich text to `.md` with headings, bold, italic, code, lists
+- **Plain text export** — raw `.txt` download of document content
+- **One-click download** — dropdown menu in the editor toolbar
+
+### ⌨️ Keyboard Shortcuts
+- `Cmd/Ctrl + S` — Save document
+- `Cmd/Ctrl + /` — Toggle AI Co-Author sidebar
+- `Cmd/Ctrl + Shift + E` — Export document
+- `Cmd/Ctrl + D` — Branch (duplicate) document
+- `?` — Show keyboard shortcuts modal
+- `Esc` — Close any open panel
+
+### 🧪 Test Suite
+- **pytest + httpx** async tests for auth and docs API
+- **14+ tests** covering CRUD, branching, snapshots, search, and auth enforcement
+- **GitHub Actions CI** — auto-runs on every push/PR with green badge
+
+### 🐳 Docker Deployment
+- **Full stack** in a single `docker-compose up` — backend, frontend, WebSocket server, PostgreSQL, Redis
+- **Multi-stage builds** — optimized production images
+- **Health checks** — automatic service dependency ordering
+
 ---
 
 ##  Tech Stack
@@ -215,18 +249,43 @@ npm run dev   # Runs on http://localhost:3000
 3. Open the same document URL in a **second browser tab**
 4. Type in both tabs simultaneously — watch CRDTs merge in real-time ⚡
 
+### Alternative: Docker (Full Stack)
+
+```bash
+# One command to start everything:
+docker-compose up --build
+
+# Services:
+# http://localhost:3000  → Next.js frontend
+# http://localhost:8000  → FastAPI backend
+# ws://localhost:1234    → Hocuspocus WebSocket
+```
+
+### 7. Run Tests
+
+```bash
+cd backend
+python -m pytest tests/ -v --tb=short
+# Expected: 14+ tests pass ✅
+```
+
 ---
 
 ##  Project Structure
 
 ```
 syncpad/
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # GitHub Actions CI pipeline
 ├── apps/
 │   ├── web/                    # Next.js 16 frontend
+│   │   ├── Dockerfile          # Multi-stage production build
+│   │   ├── vercel.json         # Vercel deployment config
 │   │   ├── app/
 │   │   │   ├── (auth)/         # Login/Register (route group)
-│   │   │   ├── dashboard/      # Document management
-│   │   │   └── doc/[id]/       # Collaborative editor page
+│   │   │   ├── dashboard/      # Document management + search
+│   │   │   └── doc/[id]/       # Collaborative editor + export
 │   │   ├── components/
 │   │   │   ├── Editor.tsx      # Tiptap + Yjs integration
 │   │   │   ├── Sidebar.tsx     # AI co-author panel
@@ -234,21 +293,30 @@ syncpad/
 │   │   │   ├── VersionHistory.tsx  # Snapshot + Replay
 │   │   │   └── BranchVisualizer.tsx # Git-style branching
 │   │   └── lib/
-│   │       └── api.ts          # Typed fetch wrapper
+│   │       ├── api.ts          # Typed fetch wrapper
+│   │       └── useKeyboardShortcuts.ts # Global keyboard shortcuts
 │   │
 │   └── server/                 # Hocuspocus CRDT server
+│       ├── Dockerfile          # Node.js production image
 │       └── src/index.ts        # WebSocket + Redis setup
 │
 ├── backend/                    # FastAPI REST API
+│   ├── Dockerfile              # Python 3.12 production image
+│   ├── pytest.ini              # Test configuration
 │   ├── main.py                 # App entrypoint + CORS
 │   ├── models.py               # SQLAlchemy ORM models
 │   ├── dependencies.py         # JWT auth middleware
-│   └── routers/
-│       ├── auth.py             # Register/Login/JWT
-│       ├── docs.py             # CRUD + Branching + Snapshots
-│       └── ai.py               # GPT-4o SSE streaming
+│   ├── routers/
+│   │   ├── auth.py             # Register/Login/JWT
+│   │   ├── docs.py             # CRUD + Branching + Snapshots + Search
+│   │   └── ai.py               # GPT-4o SSE streaming
+│   └── tests/
+│       ├── conftest.py         # Shared test fixtures
+│       ├── test_auth.py        # Auth endpoint tests
+│       └── test_docs.py        # Docs API tests (CRUD, branch, snap, search)
 │
-├── docker-compose.yml          # PostgreSQL + Redis
+├── docker-compose.yml          # Full stack: 5 services
+├── railway.json                # Railway deployment config
 ├── .env.example                # Environment template
 └── README.md
 ```

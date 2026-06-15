@@ -1,8 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
+
+// ─── Debounce hook ─────────────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ─── Highlight matched text in document titles ─────────────────────────────
+function HighlightedTitle({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <span key={i} className="text-indigo-400 bg-indigo-500/20 rounded px-0.5">{part}</span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
 
 type Document = {
   id: string;
@@ -38,12 +66,36 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const router = useRouter();
+  const debouncedSearch = useDebounce(search, 300);
 
+  // Load on mount
   useEffect(() => {
     loadDocuments();
   }, []);
+
+  // Debounced server-side search
+  useEffect(() => {
+    const fetchFiltered = async () => {
+      try {
+        setSearchLoading(true);
+        const endpoint = debouncedSearch
+          ? `/docs?q=${encodeURIComponent(debouncedSearch)}`
+          : "/docs";
+        const docs = await fetchApi(endpoint);
+        setDocuments(docs);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("401")) {
+          router.push("/login");
+        }
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    fetchFiltered();
+  }, [debouncedSearch]);
 
   const loadDocuments = async () => {
     try {
@@ -84,9 +136,11 @@ export default function Dashboard() {
     }
   };
 
-  const filtered = documents.filter((d) =>
-    d.title.toLowerCase().includes(search.toLowerCase())
-  );
+  // Client-side filtering is now handled by the backend via debounced search.
+  // We still keep a local filter for instant feel before debounce triggers.
+  const filtered = debouncedSearch === search
+    ? documents
+    : documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr);
@@ -147,7 +201,7 @@ export default function Dashboard() {
                 placeholder="Search documents..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm text-white placeholder-slate-600 rounded-xl outline-none transition-all"
+                className="w-full pl-9 pr-9 py-2 text-sm text-white placeholder-slate-600 rounded-xl outline-none transition-all"
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -161,6 +215,13 @@ export default function Dashboard() {
                   e.target.style.boxShadow = "none";
                 }}
               />
+              {/* Search loading spinner */}
+              {searchLoading && (
+                <svg className="animate-spin w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              )}
             </div>
           </div>
 
@@ -328,7 +389,7 @@ export default function Dashboard() {
                     {/* Info */}
                     <div className="p-4">
                       <h3 className="font-semibold text-white text-sm truncate mb-1 group-hover:text-indigo-300 transition-colors">
-                        {doc.title}
+                        <HighlightedTitle text={doc.title} query={search} />
                       </h3>
                       <p className="text-xs text-slate-500">{formatDate(doc.updated_at)}</p>
                     </div>
