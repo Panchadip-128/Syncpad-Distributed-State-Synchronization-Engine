@@ -8,11 +8,20 @@ from routers import auth, docs, ai
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("Database tables verified.")
+    except Exception as e:
+        print(f"Warning: Failed to connect to database during startup: {e}")
+    
     yield
+    
     # Clean up
-    await engine.dispose()
+    try:
+        await engine.dispose()
+    except Exception:
+        pass
 
 app = FastAPI(title="Syncpad API", lifespan=lifespan, docs_url="/api-docs")
 
