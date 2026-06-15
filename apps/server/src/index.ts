@@ -82,7 +82,8 @@ async function start() {
       const base64State = Buffer.from(state).toString('base64');
       
       try {
-        const response = await fetch(`http://localhost:8000/docs/${documentName}/snapshot`, {
+        const apiUrl = process.env.API_URL || "http://localhost:8000";
+        const response = await fetch(`${apiUrl}/docs/${documentName}/snapshot`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"

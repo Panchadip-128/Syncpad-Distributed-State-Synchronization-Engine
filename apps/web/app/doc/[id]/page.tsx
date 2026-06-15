@@ -254,8 +254,9 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
       })
       .catch(() => router.push("/dashboard"));
 
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:1234";
     const newProvider = new HocuspocusProvider({
-      url: "ws://localhost:1234",
+      url: wsUrl,
       name: id,
       document: yDoc,
       onSynced: () => setIsSynced(true),
