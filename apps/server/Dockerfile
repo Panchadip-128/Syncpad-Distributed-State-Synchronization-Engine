@@ -2,10 +2,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY apps/server/ .
 
 EXPOSE 1234
 

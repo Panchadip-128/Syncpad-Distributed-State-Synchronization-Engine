@@ -3,10 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY apps/web/ .
 
 # Set build-time env for API URL (overridden at runtime via env)
 ENV NEXT_PUBLIC_API_URL=http://localhost:8000
