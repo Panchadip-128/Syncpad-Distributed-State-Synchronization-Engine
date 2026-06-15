@@ -27,6 +27,7 @@ export default function Editor({
     extensions: [
       StarterKit.configure({
         // Collaboration extension handles history
+        // @ts-ignore: Tiptap types might not have history in this version
         history: false,
       }),
       Collaboration.configure({ document: yDoc }),

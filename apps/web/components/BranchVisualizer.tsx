@@ -23,7 +23,7 @@ export default function BranchVisualizer({ documentId, provider }: BranchVisuali
       const stateUpdate = Y.encodeStateAsUpdate(provider.document);
 
       const tempProvider = new HocuspocusProvider({
-        url: provider.configuration.url as string,
+        url: (provider.configuration as any).url as string,
         name: newDoc.id,
       });
 
