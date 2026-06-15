@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ SyncPad
+#  SyncPad
 
 ### Distributed State Synchronization Engine
 
@@ -19,7 +19,7 @@
 
 ---
 
-## 🎯 Why This Project?
+##  Aspects
 
 Most "real-time collaboration" demos are just Firebase wrappers. **SyncPad is different** — it implements the same distributed systems primitives used at scale by Notion (Yjs), Figma (CRDTs), and Google Docs (OT→CRDT migration):
 
@@ -34,7 +34,7 @@ Most "real-time collaboration" demos are just Firebase wrappers. **SyncPad is di
 
 ---
 
-## 🏗 System Architecture
+##  System Architecture
 
 ```mermaid
 graph TB
@@ -54,7 +54,7 @@ graph TB
         AI["AI Co-Author<br/>GPT-4o SSE Stream"]
     end
 
-    subgraph Data ["💾 Persistence Layer"]
+    subgraph Data [" Persistence Layer"]
         PG["PostgreSQL<br/>Documents, Users,<br/>Snapshots, Branches"]
     end
 
@@ -109,31 +109,31 @@ Tiptap re-renders — 'H' appears instantly
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🔄 Real-Time CRDT Collaboration
+###  Real-Time CRDT Collaboration
 - **Zero-conflict merging** — type simultaneously in multiple tabs, every edit auto-resolves
 - **Live cursor tracking** — see collaborators' names, positions, and selections in real-time
 - **Awareness protocol** — presence indicators with colored avatars and online status
 
-### 📸 Version History & Snapshots
+###  Version History & Snapshots
 - **Point-in-time snapshots** — capture the full Yjs binary state at any moment
 - **Snapshot comparison** — browse and restore any previous version
 - **Deterministic replay** — watch the document reconstruct itself character-by-character at 5× speed, visually proving CRDT convergence
 
-### 🌿 Git-Style Document Branching
+###  Git-Style Document Branching
 - **Fork any document** — create a branch from the current CRDT state
 - **Visual branch tree** — see parent-child relationships in an interactive visualizer
 - **Independent evolution** — branches maintain their own Yjs document state
 
-### 🤖 AI Co-Author (SSE Streaming)
+###  AI Co-Author (SSE Streaming)
 - **Rewrite** — improve clarity and professionalism
 - **Summarize** — condense to key points
 - **Continue** — extend writing in the same tone
 - **Fix Grammar** — correct all errors
 - Token-by-token streaming via Server-Sent Events
 
-### 🎨 Premium 2026 UI
+###  Premium 2026 UI
 - Glassmorphism cards with animated gradient mesh backgrounds
 - Animated Lamport clock ticker on the landing page
 - Custom design system with glow effects, shimmer loading states, and micro-animations
@@ -141,7 +141,7 @@ Tiptap re-renders — 'H' appears instantly
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 
 | Layer | Technology | Purpose |
 |---|---|---|
@@ -158,7 +158,7 @@ Tiptap re-renders — 'H' appears instantly
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -217,7 +217,7 @@ npm run dev   # Runs on http://localhost:3000
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 syncpad/
@@ -255,7 +255,7 @@ syncpad/
 
 ---
 
-## 🔬 Technical Deep-Dive
+##  Technical Deep-Dive
 
 ### CRDT Convergence Guarantee
 
@@ -318,7 +318,7 @@ When any client sends an update → it reaches one Hocuspocus node → Redis pub
 
 ---
 
-## 🔒 Security
+##  Security
 
 - **JWT Authentication** — Stateless, HS256-signed tokens with configurable expiry
 - **Password Hashing** — bcrypt with automatic salt rounds
@@ -328,7 +328,7 @@ When any client sends an update → it reaches one Hocuspocus node → Redis pub
 
 ---
 
-## 📊 Performance
+##  Performance
 
 | Metric | Value |
 |---|---|
@@ -340,7 +340,7 @@ When any client sends an update → it reaches one Hocuspocus node → Redis pub
 
 ---
 
-## 🗺 Roadmap
+##  Roadmap
 
 - [ ] Operational Transform ↔ CRDT bridge for backward compatibility
 - [ ] End-to-end encryption with WebCrypto API
@@ -351,7 +351,7 @@ When any client sends an update → it reaches one Hocuspocus node → Redis pub
 
 ---
 
-## 📝 License
+##  License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
@@ -359,7 +359,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Built with ❤️ to demonstrate distributed systems engineering**
+**Built with to demonstrate distributed systems engineering**
 
 *If you found this useful, consider giving it a ⭐*
 
