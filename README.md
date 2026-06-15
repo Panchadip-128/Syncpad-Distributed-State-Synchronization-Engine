@@ -133,7 +133,7 @@ Tiptap re-renders — 'H' appears instantly
 - **Fix Grammar** — correct all errors
 - Token-by-token streaming via Server-Sent Events
 
-###  Premium 2026 UI
+###  Standard Features
 - Glassmorphism cards with animated gradient mesh backgrounds
 - Animated Lamport clock ticker on the landing page
 - Custom design system with glow effects, shimmer loading states, and micro-animations
