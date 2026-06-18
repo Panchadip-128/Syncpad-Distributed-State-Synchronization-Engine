@@ -43,12 +43,13 @@ export function TelemetryDashboard({ provider, yDoc }: { provider: HocuspocusPro
       const encodedState = Y.encodeStateAsUpdate(yDoc);
       
       // Calculate a mock ping based on real connection status
-      const basePing = provider.status === "connected" ? 12 + Math.floor(Math.random() * 8) : 0;
+      const isConnected = (provider as any).status === "connected";
+      const basePing = isConnected ? 12 + Math.floor(Math.random() * 8) : 0;
       
       setStats({
         ping: basePing,
         stateSize: encodedState.length,
-        peers: provider.awareness.getStates().size,
+        peers: provider.awareness?.getStates().size ?? 0,
         updatesSec: updatesCount,
       });
       
@@ -72,10 +73,10 @@ export function TelemetryDashboard({ provider, yDoc }: { provider: HocuspocusPro
         </div>
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${provider.status === "connected" ? "bg-emerald-400" : "bg-rose-400"}`}></span>
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${provider.status === "connected" ? "bg-emerald-500" : "bg-rose-500"}`}></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${(provider as any).status === "connected" ? "bg-emerald-400" : "bg-rose-400"}`}></span>
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${(provider as any).status === "connected" ? "bg-emerald-500" : "bg-rose-500"}`}></span>
           </span>
-          <span className="text-[10px] font-medium text-slate-400 uppercase">{provider.status}</span>
+          <span className="text-[10px] font-medium text-slate-400 uppercase">{(provider as any).status === "connected" ? "connected" : "disconnected"}</span>
         </div>
       </div>
 
