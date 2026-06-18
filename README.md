@@ -58,7 +58,7 @@ graph TD
     Fast <-->|"SQLAlchemy ORM"| DB
 ```
 
-💡 **How it works (in simple terms):** Think of this as a restaurant. The **Frontend (Next.js)** is the dining area where users interact. The **Backend (FastAPI)** is the main kitchen that handles secure, slow-moving logic like user accounts and saving data to the database. The **Sync Server (Hocuspocus)** is the high-speed conveyor belt (WebSockets) that instantly passes live text edits back and forth between everyone's tables without making them wait for the main kitchen.
+**High-Level Overview:** Think of this as a restaurant. The **Frontend (Next.js)** is the dining area where users interact. The **Backend (FastAPI)** is the main kitchen that handles secure, slow-moving logic like user accounts and saving data to the database. The **Sync Server (Hocuspocus)** is the high-speed conveyor belt (WebSockets) that instantly passes live text edits back and forth between everyone's tables without making them wait for the main kitchen.
 
 ---
 
@@ -83,7 +83,7 @@ sequenceDiagram
     U2->>U2: Update UI for User B
 ```
 
-💡 **How it works (in simple terms):** When two people edit the same document, they never have to "wait in line". If User A types a word, it shows up on their screen instantly. In the background, that word is packed into a tiny, mathematical message (a CRDT update) and sent to the Sync Server. The server acts like a traffic cop, broadcasting User A's word to User B's computer, where the algorithm seamlessly merges it into User B's screen without deleting what User B is currently typing.
+**High-Level Overview:** When two people edit the same document, they never have to wait in line. If User A types a word, it shows up on their screen instantly. In the background, that word is packed into a tiny, mathematical message (a CRDT update) and sent to the Sync Server. The server acts like a traffic cop, broadcasting User A's word to User B's computer, where the algorithm seamlessly merges it into User B's screen without deleting what User B is currently typing.
 
 ---
 
@@ -109,7 +109,7 @@ sequenceDiagram
     Sync-->>User: Connection Established
 ```
 
-💡 **How it works (in simple terms):** To keep your documents completely private, we use a digital bouncer (JWT Authentication). When you log in, the Backend verifies your password and gives your browser a secure "VIP wristband" (a token). Later, when your browser tries to connect to the live-editing Sync Server, the server checks that wristband with the Backend before opening the WebSocket doors.
+**High-Level Overview:** To keep your documents completely private, we use secure JWT Authentication. When you log in, the Backend verifies your password and gives your browser a secure access token. Later, when your browser tries to connect to the live-editing Sync Server, the server verifies that token with the Backend before opening the WebSocket connection.
 
 ---
 
@@ -144,7 +144,7 @@ erDiagram
     }
 ```
 
-💡 **How it works (in simple terms):** This is how we organize the digital filing cabinet in our PostgreSQL database. A **User** can own multiple **Documents**. Every Document stores the live, collaborative text as binary data (`yjs_state`). To enable our "Time-Travel" feature, a Document can also have multiple **Snapshots**, which are frozen, historical copies of the text from specific points in time.
+**High-Level Overview:** This describes the entity-relationship model in our PostgreSQL database. A **User** can own multiple **Documents**. Every Document stores the live, collaborative text as binary data (`yjs_state`). To enable our Time-Travel feature, a Document can also have multiple **Snapshots**, which are frozen, historical copies of the text from specific points in time.
 
 ---
 
