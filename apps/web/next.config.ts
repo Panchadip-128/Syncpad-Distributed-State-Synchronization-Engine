@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://your-backend.railway.app/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
