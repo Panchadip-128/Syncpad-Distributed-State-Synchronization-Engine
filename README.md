@@ -38,8 +38,6 @@ The **SyncPad Engine** solves these issues via its novel tri-modal architecture,
 
 ## Premium UI Features
 
-![Premium Features Demo](assets/premium_features_demo.webp)
-
 Beyond the core algorithms, SyncPad features an enterprise-grade user interface built on Next.js 16 and Tailwind CSS. The interface exposes the power of the backend via several novel components:
 
 ### 1. Neural Co-Author (AI Bubble Menu)
