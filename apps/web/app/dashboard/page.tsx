@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
+import { FileText, Activity, Link as LinkIcon, RefreshCw, Search } from "lucide-react";
 
 // ─── Debounce hook ─────────────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -255,10 +256,10 @@ export default function Dashboard() {
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 animate-fade-up">
           {[
-            { label: "Documents", value: loading ? "—" : documents.length, color: "#6366f1", icon: "📄" },
-            { label: "Real-time Sync", value: "Active", color: "#10b981", icon: "⚡" },
-            { label: "CRDT Engine", value: "Yjs v14", color: "#8b5cf6", icon: "🔗" },
-            { label: "Collab Protocol", value: "WS+CRDT", color: "#f59e0b", icon: "🔄" },
+            { label: "Documents", value: loading ? "—" : documents.length, color: "#6366f1", icon: <FileText className="w-6 h-6 text-[#6366f1]" /> },
+            { label: "Real-time Sync", value: "Active", color: "#10b981", icon: <Activity className="w-6 h-6 text-[#10b981]" /> },
+            { label: "CRDT Engine", value: "Yjs v14", color: "#8b5cf6", icon: <LinkIcon className="w-6 h-6 text-[#8b5cf6]" /> },
+            { label: "Collab Protocol", value: "WS+CRDT", color: "#f59e0b", icon: <RefreshCw className="w-6 h-6 text-[#f59e0b]" /> },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -292,7 +293,7 @@ export default function Dashboard() {
           </div>
         ) : filtered.length === 0 && search ? (
           <div className="text-center py-24 animate-fade-in">
-            <div className="text-4xl mb-4">🔍</div>
+            <div className="flex justify-center mb-4"><Search className="w-10 h-10 text-slate-500" /></div>
             <h3 className="text-lg font-semibold text-white mb-2">No results for &ldquo;{search}&rdquo;</h3>
             <p className="text-slate-500 text-sm">Try a different search term</p>
           </div>

@@ -6,6 +6,7 @@ import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
+import { AiBubbleMenu } from "./AiBubbleMenu";
 import "./editor.css";
 
 interface EditorProps {
@@ -183,6 +184,7 @@ export default function Editor({
       {/* Editor content */}
       <div className="px-8 py-8">
         <EditorContent editor={editor} />
+        {editor && <AiBubbleMenu editor={editor} />}
       </div>
     </div>
   );

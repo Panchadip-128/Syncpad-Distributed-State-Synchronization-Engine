@@ -12,6 +12,11 @@ import { fetchApi } from "@/lib/api";
 import { useKeyboardShortcuts, EDITOR_SHORTCUTS } from "@/lib/useKeyboardShortcuts";
 import Link from "next/link";
 import * as Y from "yjs";
+import DocumentOutline from "@/components/DocumentOutline";
+import Minimap from "@/components/Minimap";
+import { ShareModal } from "@/components/ShareModal";
+import { TelemetryDashboard } from "@/components/TelemetryDashboard";
+import { TimeTravelSlider } from "@/components/TimeTravelSlider";
 
 const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
 
@@ -69,6 +74,7 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
   const shortcuts = [
     { keys: `${mod} + S`, desc: "Save document" },
     { keys: `${mod} + /`, desc: "Toggle AI Co-Author" },
+    { keys: `${mod} + T`, desc: "Toggle Telemetry Dashboard" },
     { keys: `${mod} + Shift + E`, desc: "Export document" },
     { keys: `${mod} + D`, desc: "Branch (duplicate) document" },
     { keys: "?", desc: "Show this help" },
@@ -211,7 +217,7 @@ function SaveToast({ show }: { show: boolean }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
       </svg>
-      Saved ✓
+      Saved
     </div>
   );
 }
@@ -229,6 +235,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   const [charCount, setCharCount] = useState(0);
   const [isSynced, setIsSynced] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // New state for features
@@ -236,6 +243,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   const [showExport, setShowExport] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   const [userOptions] = useState(() => {
     const colors = ["#f43f5e", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#06b6d4"];
@@ -443,9 +451,9 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
           </div>
 
           <button
-            onClick={() => { navigator.clipboard.writeText(window.location.href); }}
+            onClick={() => setShowShare(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 text-sm transition-all border border-white/8 hover:border-white/15"
-            title="Copy share link"
+            title="Share Document"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
@@ -469,8 +477,10 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
 
       {/* ── BODY ────────────────────────────────────────── */}
       <main className="flex-1 flex overflow-hidden relative">
+        <DocumentOutline editor={editorInstance} />
+        
         {/* Editor area */}
-        <div className="flex-1 overflow-auto">
+        <div ref={editorContainerRef} className="flex-1 overflow-auto transition-all pl-12 sm:pl-0 pr-0 lg:pr-[140px] relative scroll-smooth">
           <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
             {provider ? (
               <Editor
@@ -485,6 +495,15 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
             )}
           </div>
         </div>
+
+        {/* Telemetry Dashboard */}
+        {provider && <TelemetryDashboard provider={provider} yDoc={yDoc} />}
+
+        {/* Minimap */}
+        <Minimap editor={editorInstance} editorContainerRef={editorContainerRef} />
+
+        {/* Time Travel Slider */}
+        <TimeTravelSlider />
 
         {/* AI Sidebar — now controlled by sidebarOpen OR its own internal state */}
         {editorInstance && (
@@ -518,6 +537,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
 
       {/* ── MODALS & TOASTS ─────────────────────────────── */}
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      <ShareModal isOpen={showShare} onClose={() => setShowShare(false)} documentId={id} />
       <SaveToast show={showSaveToast} />
     </div>
   );

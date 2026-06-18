@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import CommandPalette from "@/components/CommandPalette";
+import OfflineDrawer from "@/components/OfflineDrawer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,6 +42,8 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-[#080a0f] text-white">
+        <CommandPalette />
+        <OfflineDrawer />
         {children}
       </body>
     </html>

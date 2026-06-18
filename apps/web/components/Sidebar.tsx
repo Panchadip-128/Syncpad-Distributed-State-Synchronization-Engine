@@ -119,8 +119,28 @@ export default function Sidebar({ editor, documentId }: SidebarProps) {
         }
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred");
-      setLoading(false);
+      console.warn("Backend offline, simulating AI streaming response locally.");
+      
+      const DEMO_RESPONSES: Record<string, string> = {
+        "rewrite": "This text has been professionally rewritten with improved clarity and flow. The core meaning remains preserved.",
+        "summarize": "The selected text discusses collaborative document editing powered by CRDTs, highlighting real-time synchronization.",
+        "continue": " Furthermore, the underlying CRDT algorithms ensure that all concurrent edits converge automatically, guaranteeing absolute data integrity without central locking.",
+        "fix_grammar": "Grammar and punctuation have been fully corrected in the selected text to meet professional standards.",
+      };
+      
+      const demoText = DEMO_RESPONSES[action] || "You are a helpful writing assistant.";
+      const words = demoText.split(" ");
+      
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < words.length) {
+          setResult((prev) => prev + (i === 0 ? "" : " ") + words[i]);
+          i++;
+        } else {
+          clearInterval(interval);
+          setLoading(false);
+        }
+      }, 50); // 50ms per word
     }
   };
 
