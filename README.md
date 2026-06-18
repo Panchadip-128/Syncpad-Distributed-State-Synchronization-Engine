@@ -91,13 +91,7 @@ npm run dev   # Runs on http://localhost:3000
 
 ---
 
-## License & Intellectual Property
 
-**Proprietary & Confidential.** 
-Patent Pending. International filing date: June 2026. 
-Usage of this repository is strictly for prior-art review and non-commercial evaluation.
-
----
 
 <div align="center">
 **Defining the next epoch of spatial and textual state synchronization.**
