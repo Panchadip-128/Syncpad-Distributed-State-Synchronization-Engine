@@ -48,14 +48,14 @@ graph TD
         DB[(PostgreSQL Database)]
     end
 
-    Client <-->|HTTPS UI| Web
-    Client <-->|WebSockets (ws://)| HP
-    Client <-->|REST API (https://)| Fast
+    Client <-->|"HTTPS UI"| Web
+    Client <-->|"WebSockets (ws://)"| HP
+    Client <-->|"REST API (https://)"| Fast
     
-    HP <-->|State Synchronization| Redis
-    HP -->|Webhooks / Auth| Fast
+    HP <-->|"State Synchronization"| Redis
+    HP -->|"Webhooks / Auth"| Fast
     
-    Fast <-->|SQLAlchemy ORM| DB
+    Fast <-->|"SQLAlchemy ORM"| DB
 ```
 
 ---
@@ -66,10 +66,10 @@ When users collaborate on a document, their keystrokes are merged locally into a
 
 ```mermaid
 sequenceDiagram
-    participant U1 as User A (Client)
-    participant U2 as User B (Client)
-    participant Y as Local Yjs Doc
-    participant S as Sync Server (Hocuspocus)
+    participant U1 as "User A (Client)"
+    participant U2 as "User B (Client)"
+    participant Y as "Local Yjs Doc"
+    participant S as "Sync Server (Hocuspocus)"
     
     U1->>Y: Type text (Local Edit)
     Y->>U1: Instant UI Update
@@ -89,10 +89,10 @@ SyncPad uses secure JWT (JSON Web Token) authentication for the REST API, and in
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant NextJS as Frontend (Next.js)
-    participant API as Backend (FastAPI)
-    participant Sync as Sync Server
+    participant User as "User"
+    participant NextJS as "Frontend (Next.js)"
+    participant API as "Backend (FastAPI)"
+    participant Sync as "Sync Server"
     
     User->>NextJS: Submit Login Credentials
     NextJS->>API: POST /token (OAuth2 Request)
