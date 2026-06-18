@@ -2,7 +2,7 @@
 
 # SyncPad: A Method and System for Predictive, Quantum-Resistant Distributed State Synchronization
 
-### Patent Pending (Filed 2026) • International Application No. PCT/US2026/089342
+
 
 **A production-grade, AI-native real-time collaboration engine utilizing Predictive CRDTs (pCRDT), Zero-Knowledge State Vectors (zk-SV), and Neural Deterministic Replay.**
 
