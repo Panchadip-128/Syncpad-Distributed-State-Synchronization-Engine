@@ -49,7 +49,7 @@ export function AiBubbleMenu({ editor }: { editor: any }) {
   if (!editor || !show) return null;
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center p-1 rounded-xl bg-[#1e2330] border border-indigo-500/30 shadow-[0_8px_32px_rgba(99,102,241,0.2)] overflow-hidden animate-in fade-in slide-in-from-top-4">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90vw] max-w-[420px] sm:w-auto flex flex-wrap items-center justify-center p-1.5 gap-1 rounded-xl bg-[#1e2330]/95 backdrop-blur-md border border-indigo-500/30 shadow-[0_8px_32px_rgba(99,102,241,0.2)] overflow-hidden animate-in fade-in slide-in-from-bottom-8">
       {isProcessing ? (
         <div className="flex items-center gap-2 px-4 py-1.5 text-sm text-indigo-300 font-medium animate-pulse">
           <Sparkles className="w-4 h-4 animate-spin-slow" />
