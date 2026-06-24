@@ -19,8 +19,7 @@
 
 </div>
 
-![Premium Features Demo](assets/premium_features_demo.webp)
-![SDE Features Demo](assets/sde_features_demo.png)
+
 
 ---
 
