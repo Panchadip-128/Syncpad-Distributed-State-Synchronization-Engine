@@ -4,8 +4,13 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import { Maximize2, Minimize2, PenTool, RefreshCw } from "lucide-react";
-import { Tldraw, Editor as TldrawEditor, getSnapshot, createTLStore, defaultShapeUtils, loadSnapshot } from "tldraw";
-import "tldraw/tldraw.css";
+import dynamic from "next/dynamic";
+
+// Dynamically import Excalidraw to prevent SSR issues
+const Excalidraw = dynamic(
+  async () => (await import("@excalidraw/excalidraw")).Excalidraw,
+  { ssr: false }
+);
 
 class WhiteboardErrorBoundary extends React.Component<any, { hasError: boolean, error: Error | null }> {
   constructor(props: any) {
@@ -46,34 +51,72 @@ class WhiteboardErrorBoundary extends React.Component<any, { hasError: boolean, 
 
 export function WhiteboardBlock({ node, updateAttributes }: any) {
   const [isOpen, setIsOpen] = useState(false);
-  const tldrawEditorRef = useRef<TldrawEditor | null>(null);
+  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
 
-  // Track remote change flag to avoid infinite loops
-  const isRemoteChange = useRef(false);
-
-  // Track the stringified representation of the last saved snapshot to detect actual changes
-  const lastSavedSnapshotStrRef = useRef("");
-
-  // Debounced save: persists snapshot + renders a preview image into node attrs
+  // Debounced save
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const updateAttributesRef = useRef(updateAttributes);
   const myEditorId = useRef(Math.random().toString(36).slice(2));
+
+  // Keep track of the last broadcasted string to avoid infinite loops
+  const lastSavedSnapshotStrRef = useRef("");
+  const isRemoteUpdateRef = useRef(false);
   
   useEffect(() => {
     updateAttributesRef.current = updateAttributes;
   }, [updateAttributes]);
 
-  const scheduleSave = useCallback(() => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      const tldrawEditor = tldrawEditorRef.current;
-      if (!tldrawEditor) return;
+  // Handle incoming remote updates
+  useEffect(() => {
+    if (!excalidrawAPI || !node.attrs.snapshot) return;
+    
+    // Ignore updates that we originally authored
+    if (node.attrs.lastEditorId === myEditorId.current) return;
 
+    try {
+      const remoteSnapshotStr = typeof node.attrs.snapshot === 'string' 
+        ? node.attrs.snapshot 
+        : JSON.stringify(node.attrs.snapshot);
+
+      if (remoteSnapshotStr !== lastSavedSnapshotStrRef.current) {
+        lastSavedSnapshotStrRef.current = remoteSnapshotStr;
+        isRemoteUpdateRef.current = true;
+        
+        const parsed = typeof node.attrs.snapshot === 'string' 
+          ? JSON.parse(node.attrs.snapshot) 
+          : node.attrs.snapshot;
+        
+        // Handle gracefully if the snapshot is an array (our new format)
+        // or if it happens to be Tldraw's old format (which we'll just ignore or try to salvage)
+        let elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
+        
+        // If it's a completely different format (like tldraw), just reset to empty to avoid crashing Excalidraw
+        if (!Array.isArray(elements)) {
+          elements = [];
+        }
+
+        if (elements && Array.isArray(elements)) {
+          excalidrawAPI.updateScene({ elements });
+        }
+      }
+    } catch (err) {
+      console.error("Error syncing remote whiteboard snapshot:", err);
+    } finally {
+      // Excalidraw's onChange is sometimes async or deferred, so we pad the reset
+      setTimeout(() => {
+        isRemoteUpdateRef.current = false;
+      }, 50);
+    }
+  }, [node.attrs.snapshot, node.attrs.lastEditorId, excalidrawAPI]);
+
+  // Handle local changes
+  const onChange = useCallback((elements: readonly any[], appState: any) => {
+    if (isRemoteUpdateRef.current) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
       try {
-        const snapshot = getSnapshot(tldrawEditor.store);
-        // Only sync the document to avoid infinite loops caused by differing local sessions (camera, selection)
-        const snapshotStr = JSON.stringify(snapshot.document);
+        const snapshotStr = JSON.stringify(elements);
 
         // Skip if nothing actually changed
         if (snapshotStr === lastSavedSnapshotStrRef.current) return;
@@ -89,121 +132,38 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
     }, 600);
   }, []);
 
-  // Initialize the Tldraw store only on the client side to prevent Next.js SSR/hydration crashes
-  const [store, setStore] = useState<any>(null);
-  const [initError, setInitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Only run on the client
-    if (typeof window === "undefined") return;
-
-    try {
-      const newStore = createTLStore({ shapeUtils: defaultShapeUtils });
-      if (node.attrs.snapshot) {
-        const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
-        const documentToLoad = parsed?.document ? parsed.document : parsed;
-        if (documentToLoad) {
-          // createTLStore returns a store with a default session.
-          // Since we are only loading the document, we must preserve the new session.
-          const currentSnap = getSnapshot(newStore);
-          loadSnapshot(newStore, { document: documentToLoad, session: currentSnap.session });
-        }
-        lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
-      }
-      setStore(newStore);
-    } catch (err: any) {
-      console.error("Error creating Tldraw store:", err);
-      setInitError(err.message || String(err));
-    }
-  }, []);
-
-  // Handle initialization/mounting of the Tldraw editor instance
-  const handleMount = useCallback(
-    (tldrawEditor: TldrawEditor) => {
-      tldrawEditorRef.current = tldrawEditor;
-
-      // Listen to local user changes
-      const cleanup = tldrawEditor.store.listen((entry: any) => {
-        if (entry && entry.source && entry.source !== 'user') return;
-        if (isRemoteChange.current) return;
-        scheduleSave();
-      });
-
-      return () => {
-        cleanup();
-        tldrawEditorRef.current = null;
-      };
-    },
-    [scheduleSave]
-  );
-
-  // Sync incoming changes from remote collaborators via TipTap/Yjs attributes
-  useEffect(() => {
-    const tldrawEditor = tldrawEditorRef.current;
-    if (!tldrawEditor || !node.attrs.snapshot) return;
-    
-    // Ignore updates that we originally authored (echoed back by Yjs)
-    if (node.attrs.lastEditorId === myEditorId.current) return;
-
-    try {
-      const remoteSnapshotStr = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
-      if (remoteSnapshotStr !== lastSavedSnapshotStrRef.current) {
-        isRemoteChange.current = true;
-        const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
-        
-        if (parsed) {
-          // Handle both old format (with .document) and new format (just document records)
-          const documentToLoad = parsed.document ? parsed.document : parsed;
-          const currentSnap = getSnapshot(tldrawEditor.store);
-          loadSnapshot(tldrawEditor.store, {
-            document: documentToLoad,
-            session: currentSnap.session,
-          });
-        }
-        lastSavedSnapshotStrRef.current = remoteSnapshotStr;
-      }
-    } catch (err) {
-      console.error("Error syncing remote whiteboard snapshot:", err);
-    } finally {
-      // Delay resetting the flag because tldraw's store.listen fires asynchronously
-      setTimeout(() => {
-        isRemoteChange.current = false;
-      }, 100);
-    }
-  }, [node.attrs.snapshot, node.attrs.lastEditorId]);
-
   const handleToggleOpen = async () => {
-    if (isOpen) {
-      const tldrawEditor = tldrawEditorRef.current;
-      if (tldrawEditor) {
-        try {
-          const shapeIds = [...tldrawEditor.getCurrentPageShapeIds()];
-          if (shapeIds.length > 0) {
-            const result = await tldrawEditor.toImageDataUrl(shapeIds, {
-              format: "png",
-              background: true,
-              padding: 16,
-              scale: 1.5,
-            });
-            if (result && result.url) {
-              updateAttributesRef.current({ previewImage: result.url });
-            }
-          }
-        } catch (e) {
-          console.warn("Preview generation failed on close", e);
-        }
-      }
-    }
     setIsOpen(!isOpen);
   };
 
-  // Reset viewport zoom and scroll
   const handleResetView = () => {
-    const tldrawEditor = tldrawEditorRef.current;
-    if (tldrawEditor) {
-      tldrawEditor.resetZoom();
+    if (excalidrawAPI) {
+      excalidrawAPI.resetScene();
     }
   };
+
+  // Prepare initial data once
+  const initialData = useRef<any>(null);
+  if (!initialData.current) {
+    if (node.attrs.snapshot) {
+      try {
+        const parsed = typeof node.attrs.snapshot === 'string' 
+          ? JSON.parse(node.attrs.snapshot) 
+          : node.attrs.snapshot;
+          
+        const elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
+        initialData.current = { elements: Array.isArray(elements) ? elements : [] };
+        
+        lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' 
+          ? node.attrs.snapshot 
+          : JSON.stringify(node.attrs.snapshot);
+      } catch (e) {
+        initialData.current = { elements: [] };
+      }
+    } else {
+      initialData.current = { elements: [] };
+    }
+  }
 
   return (
     <NodeViewWrapper className="whiteboard-block-wrapper my-6 border border-slate-700/50 rounded-xl overflow-hidden bg-[#0d1117] shadow-xl">
@@ -256,19 +216,15 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
           </div>
         )}
 
-        {/* Render Tldraw Editor */}
-        <div className="w-full h-full bg-[#1e1e1e] relative">
+        {/* Render Excalidraw Editor */}
+        <div className="w-full h-full relative" style={{ backgroundColor: "#121212" }}>
           <WhiteboardErrorBoundary>
-            {initError ? (
-              <div className="w-full h-full flex flex-col items-center justify-center text-red-400 bg-red-950/20 p-4">
-                <span className="font-bold mb-2">Failed to initialize whiteboard:</span>
-                <span className="text-xs font-mono bg-black/50 p-2 rounded max-w-full overflow-hidden text-ellipsis">{initError}</span>
-              </div>
-            ) : store ? (
-              <Tldraw store={store} onMount={handleMount} autoFocus={false} />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-500">Loading Whiteboard...</div>
-            )}
+            <Excalidraw 
+              excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
+              initialData={initialData.current}
+              onChange={onChange}
+              theme="dark"
+            />
           </WhiteboardErrorBoundary>
         </div>
       </div>
@@ -279,7 +235,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
 export const WhiteboardExtension = Node.create({
   name: "whiteboard",
   group: "block",
-  atom: true, // Mark as block atom so TipTap handles it as a unit
+  atom: true,
 
   addAttributes() {
     return {
