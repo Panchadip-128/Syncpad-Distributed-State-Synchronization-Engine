@@ -1,46 +1,41 @@
-"use client";
-
-import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
-import { Maximize2, Minimize2, PenTool, RefreshCw } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// Dynamically import Excalidraw to prevent SSR issues
-const Excalidraw = dynamic(
-  async () => (await import("@excalidraw/excalidraw")).Excalidraw,
-  { ssr: false }
-);
+// Dynamically import Tldraw with no SSR to prevent hydration and window issues
+const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), { ssr: false });
 
-class WhiteboardErrorBoundary extends React.Component<any, { hasError: boolean, error: Error | null }> {
-  constructor(props: any) {
+class TldrawErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+  static getDerivedStateFromError() {
+    return { hasError: true };
   }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Whiteboard crashed:", error, errorInfo);
+  componentDidCatch(error: any) {
+    console.error("Tldraw crashed:", error);
   }
-
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-red-950/20 text-red-400 p-6 overflow-auto">
-          <h2 className="text-lg font-bold mb-2">Whiteboard Crashed</h2>
-          <pre className="text-xs whitespace-pre-wrap font-mono bg-black/50 p-4 rounded-md border border-red-900/50 max-w-full">
-            {this.state.error?.message || "Unknown error"}
-            {"\n\n"}
-            {this.state.error?.stack}
-          </pre>
+        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900/50 rounded-xl border border-red-500/30 p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
+            <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-semibold text-red-400 mb-1">Whiteboard Render Error</h3>
+          <p className="text-xs text-slate-400 max-w-sm mb-4">
+            The drawing data could not be loaded because it may be corrupted or from an older version.
+          </p>
           <button 
-            onClick={() => this.setState({ hasError: false, error: null })}
-            className="mt-4 px-4 py-2 bg-red-900/50 hover:bg-red-800/50 rounded-md transition-colors"
+            onClick={() => this.setState({ hasError: false })}
+            className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-xs font-medium transition-colors"
           >
-            Try Again
+            Reset Whiteboard
           </button>
         </div>
       );
@@ -49,144 +44,100 @@ class WhiteboardErrorBoundary extends React.Component<any, { hasError: boolean, 
   }
 }
 
-export function WhiteboardBlock({ node, updateAttributes }: any) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
+function TldrawEditorWrapper({
+  initialSnapshotStr,
+  onChange
+}: {
+  initialSnapshotStr: string | null;
+  onChange: (snapshot: string) => void;
+}) {
+  const [editor, setEditor] = useState<any>(null);
+  const localUpdateInProgressRef = useRef(false);
 
-  // Debounced save
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const updateAttributesRef = useRef(updateAttributes);
-  // Keep track of the last broadcasted string to avoid infinite loops
-  const lastSavedSnapshotStrRef = useRef("");
-  const isRemoteUpdateRef = useRef(false);
-
-  const [myEditorId] = useState(() => Math.random().toString(36).slice(2));
-  
-  useEffect(() => {
-    updateAttributesRef.current = updateAttributes;
-  }, [updateAttributes]);
-
-  // Handle incoming remote updates
-  useEffect(() => {
-    if (!excalidrawAPI || !node.attrs.snapshot) return;
-    
-    // Ignore updates that we originally authored
-    if (node.attrs.lastEditorId === myEditorId.current) return;
-
-    try {
-      const remoteSnapshotStr = typeof node.attrs.snapshot === 'string' 
-        ? node.attrs.snapshot 
-        : JSON.stringify(node.attrs.snapshot);
-
-      if (remoteSnapshotStr !== lastSavedSnapshotStrRef.current) {
-        lastSavedSnapshotStrRef.current = remoteSnapshotStr;
-        isRemoteUpdateRef.current = true;
-        
-        const parsed = typeof node.attrs.snapshot === 'string' 
-          ? JSON.parse(node.attrs.snapshot) 
-          : node.attrs.snapshot;
-        
-        // Handle gracefully if the snapshot is an array (our new format)
-        // or if it happens to be Tldraw's old format (which we'll just ignore or try to salvage)
-        let elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
-        
-        // If it's a completely different format (like tldraw), just reset to empty to avoid crashing Excalidraw
-        if (!Array.isArray(elements)) {
-          elements = [];
-        }
-
-        if (elements && Array.isArray(elements)) {
-          excalidrawAPI.updateScene({ elements });
-        }
-      }
-    } catch (err) {
-      console.error("Error syncing remote whiteboard snapshot:", err);
-    } finally {
-      // Excalidraw's onChange is sometimes async or deferred, so we pad the reset
-      setTimeout(() => {
-        isRemoteUpdateRef.current = false;
-      }, 50);
-    }
-  }, [node.attrs.snapshot, node.attrs.lastEditorId, excalidrawAPI]);
-
-  // Handle local changes
-  const onChange = useCallback((elements: readonly any[], appState: any) => {
-    if (isRemoteUpdateRef.current) return;
-
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
+  const handleMount = useCallback((app: any) => {
+    setEditor(app);
+    if (initialSnapshotStr) {
       try {
-        const snapshotStr = JSON.stringify(elements);
-
-        // Skip if nothing actually changed
-        if (snapshotStr === lastSavedSnapshotStrRef.current) return;
-        lastSavedSnapshotStrRef.current = snapshotStr;
-
-        updateAttributesRef.current({
-          snapshot: snapshotStr,
-          lastEditorId: myEditorId.current,
-        });
-      } catch (err) {
-        console.error("Failed to save whiteboard snapshot:", err);
-      }
-    }, 600);
-  }, []);
-
-  const handleToggleOpen = async () => {
-    setIsOpen(!isOpen);
-  };
-
-  const handleResetView = () => {
-    if (excalidrawAPI) {
-      excalidrawAPI.resetScene();
-    }
-  };
-
-  // Prepare initial data once
-  const [initialData] = useState(() => {
-    let initialElements: any[] = [];
-    if (node.attrs.snapshot) {
-      try {
-        const parsed = typeof node.attrs.snapshot === 'string' 
-          ? JSON.parse(node.attrs.snapshot) 
-          : node.attrs.snapshot;
-          
-        const elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
-        initialElements = Array.isArray(elements) ? elements : [];
+        const parsed = JSON.parse(initialSnapshotStr);
+        if (parsed && typeof parsed === 'object') {
+          app.store.loadSnapshot(parsed);
+        }
       } catch (e) {
-        initialElements = [];
+        console.warn("Failed to load initial snapshot:", e);
       }
     }
-    return { elements: initialElements };
-  });
+  }, [initialSnapshotStr]);
 
   useEffect(() => {
-    lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' 
-      ? node.attrs.snapshot 
-      : JSON.stringify(node.attrs.snapshot);
-  }, []);
+    if (!editor) return;
+
+    // Listen to local changes and debounce them to prevent infinite loop crashes
+    let timeoutId: NodeJS.Timeout;
+    
+    const unlisten = editor.store.listen(
+      (entry: any) => {
+        // We only care about user actions, not remote merges
+        if (entry.source !== 'user') return;
+        
+        localUpdateInProgressRef.current = true;
+        clearTimeout(timeoutId);
+        
+        timeoutId = setTimeout(() => {
+          try {
+            const snapshot = editor.store.getSnapshot();
+            onChange(JSON.stringify(snapshot));
+          } catch (e) {
+            console.error("Failed to serialize snapshot:", e);
+          } finally {
+            setTimeout(() => { localUpdateInProgressRef.current = false; }, 500);
+          }
+        }, 1000); // 1s debounce to protect Yjs/TipTap
+      },
+      { source: 'user', scope: 'document' }
+    );
+
+    return () => {
+      unlisten();
+      clearTimeout(timeoutId);
+    };
+  }, [editor, onChange]);
+
+  return (
+    <div className="w-full h-full relative" style={{ zIndex: 1 }}>
+      <TldrawErrorBoundary>
+        <Tldraw onMount={handleMount} />
+      </TldrawErrorBoundary>
+    </div>
+  );
+}
+
+function WhiteboardComponent({ node, updateAttributes }: any) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Debounced update to TipTap to prevent history bloat
+  const handleSave = useCallback((newSnapshotStr: string) => {
+    // Only update TipTap attributes if they actually changed
+    updateAttributes({
+      snapshot: newSnapshotStr
+    });
+  }, [updateAttributes]);
 
   return (
     <NodeViewWrapper className="whiteboard-block-wrapper my-6 border border-slate-700/50 rounded-xl overflow-hidden bg-[#0d1117] shadow-xl">
-      {/* Header */}
-      <div className="px-4 py-2 bg-slate-800/50 flex items-center justify-between border-b border-slate-700/50 select-none">
-        <div className="flex items-center gap-2">
-          <PenTool className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm font-medium text-slate-200">Collaborative Whiteboard</span>
+      {/* Header bar */}
+      <div className="bg-slate-800/80 px-4 py-2 border-b border-slate-700/50 flex items-center justify-between group">
+        <div className="flex items-center gap-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></div>
+          <span className="text-sm font-semibold text-slate-200">Collaborative Whiteboard</span>
+          {!isOpen && (
+            <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              Click to open
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {isOpen && (
-            <button
-              onClick={handleResetView}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-200 transition-colors"
-              title="Reset View"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          )}
           <button
-            onClick={handleToggleOpen}
+            onClick={() => setIsOpen(!isOpen)}
             onPointerDown={(e) => e.stopPropagation()}
             className="p-1.5 hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-200 transition-colors"
             title={isOpen ? "Minimize Whiteboard" : "Maximize Whiteboard"}
@@ -211,23 +162,13 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       >
         {!isOpen && (
           <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-4 py-2 rounded-lg font-medium shadow-xl">
+            <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-4 py-2 rounded-lg font-medium shadow-xl">
               Click to Interact
             </span>
           </div>
         )}
 
-        {/* Render Excalidraw Editor */}
-        <div className="w-full h-full relative" style={{ backgroundColor: "#121212" }}>
-          <WhiteboardErrorBoundary>
-            <Excalidraw 
-              excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
-              initialData={initialData}
-              onChange={onChange}
-              theme="dark"
-            />
-          </WhiteboardErrorBoundary>
-        </div>
+        {isOpen && <TldrawEditorWrapper initialSnapshotStr={node.attrs.snapshot || null} onChange={handleSave} />}
       </div>
     </NodeViewWrapper>
   );
@@ -248,23 +189,23 @@ export const WhiteboardExtension = Node.create({
       },
       lastEditorId: {
         default: null,
-      },
+      }
     };
   },
 
   parseHTML() {
     return [
       {
-        tag: "whiteboard-block",
+        tag: 'div[data-type="whiteboard"]',
       },
     ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ["whiteboard-block", mergeAttributes(HTMLAttributes)];
+    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'whiteboard' })];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(WhiteboardBlock);
+    return ReactNodeViewRenderer(WhiteboardComponent);
   },
 });
