@@ -72,7 +72,8 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
 
       try {
         const snapshot = getSnapshot(tldrawEditor.store);
-        const snapshotStr = JSON.stringify(snapshot);
+        // Only sync the document to avoid infinite loops caused by differing local sessions (camera, selection)
+        const snapshotStr = JSON.stringify(snapshot.document);
 
         // Skip if nothing actually changed
         if (snapshotStr === lastSavedSnapshotStrRef.current) return;
@@ -100,8 +101,12 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       const newStore = createTLStore({ shapeUtils: defaultShapeUtils });
       if (node.attrs.snapshot) {
         const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
-        if (parsed && parsed.document) {
-          loadSnapshot(newStore, parsed);
+        const documentToLoad = parsed?.document ? parsed.document : parsed;
+        if (documentToLoad) {
+          // createTLStore returns a store with a default session.
+          // Since we are only loading the document, we must preserve the new session.
+          const currentSnap = getSnapshot(newStore);
+          loadSnapshot(newStore, { document: documentToLoad, session: currentSnap.session });
         }
         lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
       }
@@ -145,10 +150,12 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         isRemoteChange.current = true;
         const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
         
-        if (parsed && parsed.document) {
+        if (parsed) {
+          // Handle both old format (with .document) and new format (just document records)
+          const documentToLoad = parsed.document ? parsed.document : parsed;
           const currentSnap = getSnapshot(tldrawEditor.store);
           loadSnapshot(tldrawEditor.store, {
-            document: parsed.document,
+            document: documentToLoad,
             session: currentSnap.session,
           });
         }
