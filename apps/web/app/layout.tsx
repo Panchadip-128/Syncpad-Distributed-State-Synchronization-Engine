@@ -42,9 +42,6 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
     >
-      <head>
-        <link rel="stylesheet" href="https://unpkg.com/tldraw@5.1.1/tldraw.css" />
-      </head>
       <body className="min-h-full flex flex-col bg-[#080a0f] text-white">
         <CommandPalette />
         <OfflineDrawer />

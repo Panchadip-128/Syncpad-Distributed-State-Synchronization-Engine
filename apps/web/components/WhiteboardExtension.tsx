@@ -247,6 +247,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
 
         {/* Render Tldraw Editor */}
         <div className="w-full h-full bg-[#1e1e1e] relative">
+          <link rel="stylesheet" href="https://unpkg.com/tldraw@5.1.1/tldraw.css" />
           <WhiteboardErrorBoundary>
             {initError ? (
               <div className="w-full h-full flex flex-col items-center justify-center text-red-400 bg-red-950/20 p-4">
