@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import { Maximize2, Minimize2, PenTool, RefreshCw } from "lucide-react";
-import { Tldraw, Editor as TldrawEditor, getSnapshot, loadSnapshot } from "tldraw";
+import { Tldraw, Editor as TldrawEditor, getSnapshot } from "tldraw";
 import "tldraw/tldraw.css";
 
 export function WhiteboardBlock({ node, updateAttributes }: any) {
@@ -79,7 +79,11 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         try {
           isRemoteChange.current = true;
           const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
-          loadSnapshot(tldrawEditor.store, parsed);
+          if (parsed && parsed.document) {
+            tldrawEditor.store.mergeRemoteChanges(() => {
+              tldrawEditor.store.put(Object.values(parsed.document) as any);
+            });
+          }
           lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
         } catch (err) {
           console.error("Error loading initial whiteboard snapshot:", err);
@@ -115,7 +119,12 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       if (remoteSnapshotStr !== lastSavedSnapshotStrRef.current) {
         isRemoteChange.current = true;
         const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
-        loadSnapshot(tldrawEditor.store, parsed);
+        if (parsed && parsed.document) {
+          const incomingRecords = Object.values(parsed.document) as any[];
+          tldrawEditor.store.mergeRemoteChanges(() => {
+            tldrawEditor.store.put(incomingRecords);
+          });
+        }
         lastSavedSnapshotStrRef.current = remoteSnapshotStr;
       }
     } catch (err) {
