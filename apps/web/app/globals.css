@@ -485,3 +485,28 @@
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* ─────────────────────────────────────────────
+   TLDRAW CSS ISOLATION
+   Prevent our dark-mode globals from overriding
+   Tldraw's internal element styles. Without this,
+   the canvas background goes black in production.
+   ───────────────────────────────────────────── */
+.whiteboard-wrapper .tl-container,
+.whiteboard-wrapper .tl-container * {
+  /* Reset colour-scheme so Tldraw's own light-mode CSS wins */
+  color-scheme: light;
+  /* Don't let our global border utility bleed in */
+  border-color: revert;
+}
+
+/* The outer container must always have a neutral background */
+.whiteboard-wrapper .tl-container {
+  background: #ffffff !important;
+}
+
+/* Keep Tldraw's canvas from inheriting our app's text colour */
+.whiteboard-wrapper canvas {
+  color: initial;
+  background: transparent;
+}
