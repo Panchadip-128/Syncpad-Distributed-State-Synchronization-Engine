@@ -146,21 +146,10 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
         
         if (parsed && parsed.document) {
-          const incomingRecords = Object.values(parsed.document) as any[];
-          
-          tldrawEditor.store.mergeRemoteChanges(() => {
-            tldrawEditor.store.put(incomingRecords);
-            
-            // Clean up deleted shapes or assets that exist locally but not in the incoming document
-            const incomingIds = new Set(incomingRecords.map(r => r.id));
-            const currentRecords = tldrawEditor.store.allRecords();
-            const toRemove = currentRecords
-              .filter(r => !incomingIds.has(r.id) && (r.typeName === 'shape' || r.typeName === 'asset'))
-              .map(r => r.id);
-              
-            if (toRemove.length > 0) {
-              tldrawEditor.store.remove(toRemove);
-            }
+          const currentSnap = getSnapshot(tldrawEditor.store);
+          loadSnapshot(tldrawEditor.store, {
+            document: parsed.document,
+            session: currentSnap.session,
           });
         }
         lastSavedSnapshotStrRef.current = remoteSnapshotStr;
