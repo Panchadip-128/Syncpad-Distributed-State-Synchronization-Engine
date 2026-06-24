@@ -66,7 +66,8 @@ async def register(user_data: UserCreate, response: Response, db: AsyncSession =
         value=f"Bearer {access_token}",
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
+        samesite="none",
+        secure=True,
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -92,7 +93,8 @@ async def login(user_data: UserLogin, response: Response, db: AsyncSession = Dep
         value=f"Bearer {access_token}",
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
+        samesite="none",
+        secure=True,
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
