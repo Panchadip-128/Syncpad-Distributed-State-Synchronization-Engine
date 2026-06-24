@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Maximize2, Minimize2, Pencil } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// Import Tldraw CSS here so Turbopack bundles it in production
-import "tldraw/tldraw.css";
+// Tldraw CSS is now imported globally at the bottom of globals.css
 
 // Dynamic import with no SSR (Tldraw uses browser-only APIs)
 const Tldraw = dynamic(() => import("tldraw").then((m) => m.Tldraw), {

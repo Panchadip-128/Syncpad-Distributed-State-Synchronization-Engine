@@ -6,8 +6,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* tldraw/tldraw.css is imported directly in WhiteboardExtension.tsx
-   to ensure correct load order and avoid cascade conflicts. */
+/* Removed tldraw import from here, moving to bottom */
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS — SyncPad 2026 Design System
@@ -513,3 +512,6 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* IMPORT TLDRAW AT THE END TO ENSURE IT WINS SPECIFICITY AND IS NOT PURGED BY NEXT.JS */
+@import "tldraw/tldraw.css";
