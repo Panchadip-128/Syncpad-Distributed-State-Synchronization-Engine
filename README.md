@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ SyncPad
+# SyncPad
 
 ### Distributed Real-Time Collaborative Document Editor
 
@@ -21,7 +21,7 @@
 
 ---
 
-## 📖 Table of Contents
+##  Table of Contents
 
 - [Overview](#-overview)
 - [Live Demo](#-live-demo)
@@ -41,7 +41,7 @@
 
 ---
 
-## 🌟 Overview
+##  Overview
 
 SyncPad is a full-stack, real-time collaborative document editing platform that enables multiple users to simultaneously create, edit, and share rich-text documents with zero-latency conflict resolution. Built on **Conflict-Free Replicated Data Types (CRDTs)** via Yjs, every keystroke is an atomic, Lamport-clocked operation that auto-merges across any network partition — ensuring 100% consistency without operational locking.
 
@@ -56,7 +56,7 @@ SyncPad is a full-stack, real-time collaborative document editing platform that 
 
 ---
 
-## 🚀 Live Demo
+##  Live Demo
 
 | Service | URL | Platform |
 |---|---|---|
@@ -67,9 +67,9 @@ SyncPad is a full-stack, real-time collaborative document editing platform that 
 
 ---
 
-## ✨ Features
+##  Features
 
-### 📝 Core Editor
+###  Core Editor
 - **Rich Text Editing** — Powered by Tiptap v3 with headings, bold, italic, underline, strikethrough, code blocks, blockquotes, lists, and more
 - **Slash Commands** (`/`) — Quick-insert interface for headings, lists, tables, code blocks, whiteboards, sandboxes, images, and dividers
 - **Smart Tables** — Full interactive table support with insert/delete rows and columns, cell merging, and header formatting
@@ -79,13 +79,13 @@ SyncPad is a full-stack, real-time collaborative document editing platform that 
 - **Text Alignment** — Left, center, right, and justify alignment controls
 - **Export** — Export documents as PDF or DOCX with one click
 
-### 🔄 Real-Time Collaboration
+###  Real-Time Collaboration
 - **CRDT-Powered Sync** — Built on Yjs with Hocuspocus WebSocket server for sub-10ms sync
 - **Live Cursors & Presence** — See collaborator names, cursor positions, and selections in real-time
 - **Offline Support** — Yjs CRDTs natively queue edits offline and merge perfectly on reconnection
 - **Presence Bar** — Visual indicator showing all active collaborators with colored avatars
 
-### 🎨 Collaborative Whiteboard
+###  Collaborative Whiteboard
 - **Embedded Canvas** — Insert a full whiteboard inside any document via `/whiteboard`
 - **Drawing Tools** — Freehand pen, lines, rectangles, circles, arrows, and text tool
 - **7-Color Palette** — Quick color picker with adjustable brush size
@@ -93,34 +93,34 @@ SyncPad is a full-stack, real-time collaborative document editing platform that 
 - **Eraser Tool** — Precise erasing with adjustable size
 - **Keyboard Shortcuts** — `P` (pen), `L` (line), `R` (rect), `C` (circle), `A` (arrow), `T` (text), `E` (eraser)
 
-### 🤖 AI Co-Authoring
+###  AI Co-Authoring
 - **AI Bubble Menu** — Highlight any text to reveal AI actions: Improve, Shorten, Summarize, Rewrite, Continue, Fix Grammar
 - **SSE Streaming** — AI responses stream token-by-token into the editor via Server-Sent Events
 - **AI Copilot Sidebar** — Dedicated conversational panel that reads document context for chat-based assistance
 - **Powered by Groq** — Lightning-fast inference via Llama 3.3 70B
 
-### 🖥️ Interactive Code Sandbox
+###  Interactive Code Sandbox
 - **Inline Playground** — Insert executable code blocks via `/sandbox`
 - **Dual Runtime** — JavaScript runs in-browser; Python executes securely on the FastAPI backend
 - **Live Output** — stdout/stderr displayed inline below the code block
 - **Collaborative** — Code edits sync across all connected peers in real-time
 
-### ⏳ Version History & Branching
+###  Version History & Branching
 - **Time-Travel Slider** — Scrub through document history and watch it reconstruct character-by-character
 - **Snapshot System** — Save named snapshots at any point, restore them instantly
 - **Git-Style Branching** — Fork any document to create an independent branch with full history
 - **Branch Visualizer** — Visual tree showing document branches and their relationships
 
-### 🎯 Multiplayer Laser Canvas
+###  Multiplayer Laser Canvas
 - **Laser Pointer Mode** (`Ctrl+Shift+L`) — Real-time cooperative laser pointer overlay
 - **Freehand Sketching** — Draw ephemeral annotations that sync across peers and fade in 2 seconds
 - **Username Tags** — Each user's cursor is labeled with their name and assigned a unique color
 
-### 💬 Comments System
+###  Comments System
 - **Inline Comments** — Highlight text and click "Comment" to add threaded annotations
 - **Comments Sidebar** — Dedicated panel showing all active comments with context
 
-### 🔧 Productivity Tools
+###  Productivity Tools
 - **Command Palette** (`Ctrl+K`) — Fuzzy-search command launcher for all editor actions
 - **Document Outline** — Auto-generated heading tree for quick navigation
 - **Minimap** — Visual document preview for orientation in long documents
@@ -132,24 +132,24 @@ SyncPad is a full-stack, real-time collaborative document editing platform that 
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ```mermaid
 graph TD
-    Client["🖥️ Browser Client"]
+    Client[" Browser Client"]
     
-    subgraph Frontend ["⚛️ Frontend — Next.js 16 + React 19"]
+    subgraph Frontend [" Frontend — Next.js 16 + React 19"]
         Web["Tiptap Editor + Yjs Provider"]
         WB["Whiteboard (HTML5 Canvas)"]
         AI_UI["AI Bubble Menu + Copilot"]
     end
     
-    subgraph Sync ["🔄 Sync Layer — Hocuspocus"]
+    subgraph Sync [" Sync Layer — Hocuspocus"]
         HP["WebSocket CRDT Server"]
         Redis[("Redis Pub/Sub")]
     end
     
-    subgraph Backend ["🐍 Backend — FastAPI"]
+    subgraph Backend [" Backend — FastAPI"]
         API["REST API + AI Router"]
         Auth["JWT Authentication"]
         DB[("PostgreSQL / SQLite")]
@@ -178,7 +178,7 @@ Think of SyncPad as a three-layer system:
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology | Purpose |
 |---|---|---|
@@ -199,15 +199,15 @@ Think of SyncPad as a three-layer system:
 
 ---
 
-## 🔄 Real-Time Collaboration Flow
+##  Real-Time Collaboration Flow
 
 ```mermaid
 sequenceDiagram
-    participant U1 as "👤 User A"
-    participant Y1 as "📄 Local Yjs Doc (A)"
-    participant S as "🔄 Hocuspocus Server"
-    participant Y2 as "📄 Local Yjs Doc (B)"
-    participant U2 as "👤 User B"
+    participant U1 as " User A"
+    participant Y1 as " Local Yjs Doc (A)"
+    participant S as " Hocuspocus Server"
+    participant Y2 as " Local Yjs Doc (B)"
+    participant U2 as " User B"
     
     U1->>Y1: Types "Hello"
     Y1->>U1: Instant UI Update (0ms)
@@ -224,14 +224,14 @@ sequenceDiagram
 
 ---
 
-## 🔐 Authentication Flow
+##  Authentication Flow
 
 ```mermaid
 sequenceDiagram
-    participant User as "👤 User"
-    participant Next as "⚛️ Frontend"
-    participant API as "🐍 FastAPI Backend"
-    participant Sync as "🔄 Hocuspocus"
+    participant User as " User"
+    participant Next as " Frontend"
+    participant API as " FastAPI Backend"
+    participant Sync as " Hocuspocus"
     
     User->>Next: Submit email + password
     Next->>API: POST /auth/register (or /auth/login)
@@ -241,7 +241,7 @@ sequenceDiagram
     
     User->>Sync: Connect WebSocket (cookie attached)
     Sync->>API: Verify JWT token
-    API-->>Sync: ✅ Authorized
+    API-->>Sync:  Authorized
     Sync-->>User: WebSocket connection established
 ```
 
@@ -249,7 +249,7 @@ SyncPad uses **JWT authentication** with secure HttpOnly cookies. Cross-origin r
 
 ---
 
-## 📊 Data Model
+##  Data Model
 
 ```mermaid
 erDiagram
@@ -294,12 +294,12 @@ SyncPad's AI co-authoring features are powered by **Llama 3.3 70B** via Groq's i
 
 | Action | What It Does | Trigger |
 |---|---|---|
-| ✨ **Improve** | Elevates writing quality, flow, and vocabulary | Highlight text → click "Improve" |
-| 📏 **Make Shorter** | Condenses text while preserving meaning | Highlight text → click "Shorter" |
-| 📝 **Summarize** | Extracts key points into a concise summary | Highlight text → click "Summarize" |
-| 🔄 **Rewrite** | Rewrites text in a professional tone | AI Bubble Menu |
-| ➡️ **Continue** | Generates 1-2 continuation sentences | AI Bubble Menu |
-| ✅ **Fix Grammar** | Corrects spelling and grammar errors | AI Bubble Menu |
+|  **Improve** | Elevates writing quality, flow, and vocabulary | Highlight text → click "Improve" |
+|  **Make Shorter** | Condenses text while preserving meaning | Highlight text → click "Shorter" |
+|  **Summarize** | Extracts key points into a concise summary | Highlight text → click "Summarize" |
+|  **Rewrite** | Rewrites text in a professional tone | AI Bubble Menu |
+|  **Continue** | Generates 1-2 continuation sentences | AI Bubble Menu |
+|  **Fix Grammar** | Corrects spelling and grammar errors | AI Bubble Menu |
 
 ### Evaluation Methodology
 
@@ -323,7 +323,7 @@ The repository includes an automated benchmarking suite (`backend/evaluate_ai_fe
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 syncpad/
@@ -381,7 +381,7 @@ syncpad/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -437,11 +437,11 @@ npm install
 npm run dev
 ```
 
-> 🎉 Open [http://localhost:3000](http://localhost:3000) and start collaborating!
+>  Open [http://localhost:3000](http://localhost:3000) and start collaborating!
 
 ---
 
-## ☁️ Deployment
+##  Deployment
 
 SyncPad is deployed as two independent services:
 
@@ -465,7 +465,7 @@ SyncPad is deployed as two independent services:
 
 ---
 
-## 🔑 Environment Variables
+##  Environment Variables
 
 Copy `.env.example` and fill in your values:
 
@@ -485,7 +485,7 @@ cp .env.example .env
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -497,7 +497,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
