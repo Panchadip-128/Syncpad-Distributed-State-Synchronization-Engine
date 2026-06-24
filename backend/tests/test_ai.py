@@ -1,10 +1,10 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from main import app
 
 @pytest.mark.asyncio
 async def test_ai_assist_invalid_action():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.post("/ai/assist", json={
             "text": "Hello world",
             "action": "invalid_action"
@@ -14,7 +14,7 @@ async def test_ai_assist_invalid_action():
 
 @pytest.mark.asyncio
 async def test_ai_assist_valid_action():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.post("/ai/assist", json={
             "text": "Hello world",
             "action": "rewrite"

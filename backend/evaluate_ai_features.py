@@ -8,7 +8,7 @@ from openai import AsyncOpenAI
 from main import app
 
 import os
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "dummy_key_for_tests")
 client = AsyncOpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
 
 # Datasets

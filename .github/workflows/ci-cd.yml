@@ -35,7 +35,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd apps/web
-        npm ci
+        npm ci --legacy-peer-deps
     - name: Run Next.js build
       run: |
         cd apps/web

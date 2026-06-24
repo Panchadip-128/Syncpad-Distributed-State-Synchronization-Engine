@@ -14,7 +14,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 # Initialize OpenAI client pointed to Groq
 client = AsyncOpenAI(
-    api_key=os.environ.get("GROQ_API_KEY", ""),
+    api_key=os.environ.get("GROQ_API_KEY", "dummy_key_for_tests"),
     base_url="https://api.groq.com/openai/v1"
 )
 HAS_OPENAI = True
