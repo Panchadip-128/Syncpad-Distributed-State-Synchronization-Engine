@@ -155,7 +155,37 @@ erDiagram
 *   **Version History:** Save document states as snapshots and restore them at any time.
 *   **Share & Permissions:** Secure links to invite collaborators.
 *   **Telemetry Dashboard:** Monitor active peers and connection latency.
-*   **AI Co-Author:** Highlight text to seamlessly improve, summarize, or rewrite using backend AI endpoints.
+*   **Smart Tables:** Full interactive table support (Tiptap tables). Users can insert, format, modify, and delete rows and columns dynamically in the editor.
+*   **Voice Dictation:** Live, real-time speech-to-text dictation integrated into the formatting toolbar, utilizing the Web Speech API to write directly at the cursor.
+*   **AI Copilot Sidebar:** A dedicated conversational side panel that reads the active document context, enabling users to chat, ask for ideas, summarize sections, and insert responses directly into the text with a single click.
+*   **AI Co-Author:** Highlight text to improve, summarize, rewrite, continue writing, or fix grammar instantly using backend AI services.
+*   **Multiplayer Laser Canvas:** Real-time cooperative laser pointer and freehand drawing mode (`Ctrl+Shift+L`). Cursors with username tags and fading sketches sync across peers instantly via WebSocket awareness fields and disappear in 2 seconds.
+*   **Interactive Code Sandbox:** Collaborative, inline JS & Python playground node (via `/sandbox`). JavaScript runs directly in the browser's sandbox, while Python is executed securely via our FastAPI backend subprocess runner. Both code edits and stdout outputs are synchronized in real-time across active collaborators.
+
+---
+
+## AI Features Quality & Accuracy Metrics
+
+To maintain a production-grade AI co-authoring experience, the repository features an automated benchmarking and evaluation suite located at `backend/evaluate_ai_features.py`. 
+
+### Evaluation Methodology
+The evaluation suite runs programmatic test datasets through each AI writing action and uses a **LLM-as-a-Judge** architecture (using Llama 3.3 70B via Groq) to grade response quality. Each test case is evaluated on a hybrid set of metrics:
+1.  **Rule-based constraints:** e.g., verifying if summaries are strictly $\le 15$ words, or if "make shorter" reduces the character count by at least 40%.
+2.  **LLM-graded quality:** Llama-3.3 rates correctness, tone, and contextual alignment on a scale of 1 to 10.
+3.  **Result verification:** Test cases must pass both the rule-based length constraints and score $\ge 7/10$ on the LLM quality scale to be counted as fully accurate.
+
+### Benchmark Results
+Below is the evaluation report of the LLM-as-a-Judge test run across all six AI writing capabilities:
+
+| AI Action | Evaluation Target | Constraint Check | LLM Quality Score | Action Accuracy |
+| :--- | :--- | :--- | :--- | :--- |
+| **Summarize** | Core summary extraction | $\le 15$ words | $\ge 7/10$ | **75.00%** |
+| **Make Shorter** | Condense text | $\le 60\%$ length | $\ge 7/10$ | **100.00%** |
+| **Rewrite** | Rewrite professionally | N/A | $\ge 7/10$ | **80.00%** |
+| **Improve Writing** | Elevate flow and vocabulary | N/A | $\ge 7/10$ | **80.00%** |
+| **Continue Writing** | Seamless autocompletion | 1-2 sentences | $\ge 7/10$ | **100.00%** |
+| **Fix Grammar** | Correct spelling/grammar | N/A | Perfect fix | **90.00%** |
+| **Overall average** | **System-wide AI performance** | — | — | **87.50%** |
 
 ---
 

@@ -147,7 +147,70 @@
   background: rgba(99, 102, 241, 0.3);
 }
 
+/* Task Lists */
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+ul[data-type="taskList"] p {
+  margin: 0;
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+ul[data-type="taskList"] input[type="checkbox"] {
+  cursor: pointer;
+}
+
 /* Focus */
 .ProseMirror:focus-visible {
   outline: none;
+}
+
+/* ─────────────────────────────────────────────
+   PRINT STYLES FOR NATIVE PDF EXPORT
+   ───────────────────────────────────────────── */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Hide all toolbars, sidebars, headers, and UI elements */
+  .editor-focus-ring > div:first-child,
+  .absolute, .fixed, .border-l, .CommentsSidebar, .AiBubbleMenu {
+    display: none !important;
+  }
+  
+  /* Make editor full width and readable */
+  .editor-focus-ring {
+    border: none !important;
+    background: none !important;
+  }
+  
+  .ProseMirror p, .ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror code, .ProseMirror blockquote, .ProseMirror ul, .ProseMirror ol, .ProseMirror strong {
+    color: black !important;
+    background: none !important;
+    -webkit-text-fill-color: black !important;
+  }
+  
+  .ProseMirror pre {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
 }

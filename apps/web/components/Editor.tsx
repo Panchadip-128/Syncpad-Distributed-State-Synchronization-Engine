@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -7,6 +8,23 @@ import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { AiBubbleMenu } from "./AiBubbleMenu";
+import { PdfToolbar } from "./PdfToolbar";
+import { EditorMetrics } from "./EditorMetrics";
+import { CommentsSidebar } from "./CommentsSidebar";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import Image from "@tiptap/extension-image";
+import Youtube from "@tiptap/extension-youtube";
+import TextAlign from "@tiptap/extension-text-align";
+import Highlight from "@tiptap/extension-highlight";
+import { Color } from "@tiptap/extension-color";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { SlashCommands, getSuggestionItems, renderItems } from "./SlashCommands";
+import { GlobalPromptModal, showPrompt } from "./PromptModal";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
 import "./editor.css";
 
 interface EditorProps {
@@ -17,6 +35,10 @@ interface EditorProps {
   onEditorReady?: (editor: any) => void;
 }
 
+import { CommentExtension } from "./CommentExtension";
+import { CodeSandboxExtension } from "./CodeSandboxExtension";
+import { WhiteboardExtension } from "./WhiteboardExtension";
+
 export default function Editor({
   provider,
   yDoc,
@@ -24,6 +46,53 @@ export default function Editor({
   userColor = "#6366f1",
   onEditorReady,
 }: EditorProps) {
+  const [isDictating, setIsDictating] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      
+      recognitionRef.current.onresult = (event: any) => {
+        let finalTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript && editor) {
+          editor.chain().focus().insertContent(finalTranscript + " ").run();
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsDictating(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsDictating(false);
+      };
+    }
+  }, []);
+
+  const toggleDictation = () => {
+    if (isDictating) {
+      recognitionRef.current?.stop();
+      setIsDictating(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsDictating(true);
+      } catch (e) {
+        console.error("Failed to start dictation", e);
+      }
+    }
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -35,6 +104,27 @@ export default function Editor({
       CollaborationCaret.configure({
         provider,
         user: { name: userName, color: userColor },
+      }),
+      CommentExtension,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Image,
+      Youtube,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Highlight.configure({ multicolor: true }),
+      Color,
+      TextStyle,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      CodeSandboxExtension,
+      WhiteboardExtension,
+      SlashCommands.configure({
+        suggestion: {
+          items: getSuggestionItems,
+          render: renderItems,
+        },
       }),
     ],
     immediatelyRender: false,
@@ -164,6 +254,65 @@ export default function Editor({
                 <line x1="3" y1="12" x2="21" y2="12"/>
               </svg>
             </ToolbarBtn>
+            <ToolbarBtn
+              active={editor.isActive("taskList")}
+              onClick={() => editor.chain().focus().toggleTaskList().run()}
+              title="To-do list"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                <rect x="3" y="5" width="6" height="6" rx="1"/><path d="M14 8h7"/><rect x="3" y="15" width="6" height="6" rx="1"/><path d="M14 18h7"/>
+              </svg>
+            </ToolbarBtn>
+          </div>
+
+          <div className="w-px h-4 bg-white/10 mx-1" />
+
+          {/* Alignment group */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarBtn
+              active={editor.isActive({ textAlign: "left" })}
+              onClick={() => editor.chain().focus().setTextAlign("left").run()}
+              title="Align left"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </ToolbarBtn>
+            <ToolbarBtn
+              active={editor.isActive({ textAlign: "center" })}
+              onClick={() => editor.chain().focus().setTextAlign("center").run()}
+              title="Align center"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </ToolbarBtn>
+            <ToolbarBtn
+              active={editor.isActive({ textAlign: "right" })}
+              onClick={() => editor.chain().focus().setTextAlign("right").run()}
+              title="Align right"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </ToolbarBtn>
+          </div>
+
+          <div className="w-px h-4 bg-white/10 mx-1" />
+
+          {/* Colors */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarBtn
+              active={editor.isActive("highlight")}
+              onClick={() => editor.chain().focus().toggleHighlight({ color: "#facc15" }).run()}
+              title="Highlight Text"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </ToolbarBtn>
+            <ToolbarBtn
+              active={false}
+              onClick={async () => {
+                const url = await showPrompt("Image URL:");
+                if (url) editor.chain().focus().setImage({ src: url }).run();
+              }}
+              title="Insert Image"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </ToolbarBtn>
           </div>
 
           <div className="w-px h-4 bg-white/10 mx-1" />
@@ -178,14 +327,37 @@ export default function Editor({
               <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
             </svg>
           </ToolbarBtn>
+          {/* PDF & Dictation toolbar - at the right end */}
+          <div className="ml-auto flex items-center">
+            <ToolbarBtn
+              active={isDictating}
+              onClick={toggleDictation}
+              title={isDictating ? "Stop Dictation" : "Start Dictation"}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3.5 h-3.5 ${isDictating ? 'text-red-500 animate-pulse' : ''}`}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+              </svg>
+            </ToolbarBtn>
+            <div className="w-px h-4 bg-white/10 mx-1" />
+            <PdfToolbar editor={editor} />
+          </div>
         </div>
       )}
 
       {/* Editor content */}
-      <div className="px-8 py-8">
-        <EditorContent editor={editor} />
-        {editor && <AiBubbleMenu editor={editor} />}
+      <div className="flex">
+        <div className="flex-1 px-8 py-8 min-w-0">
+          <EditorContent editor={editor} />
+          {editor && <AiBubbleMenu editor={editor} yDoc={yDoc} userName={userName} />}
+        </div>
+        <CommentsSidebar editor={editor} yDoc={yDoc} userName={userName} />
       </div>
+      
+      {/* Advanced Editor Metrics */}
+      <EditorMetrics editor={editor} />
+
+      {/* Global Prompt Modal */}
+      <GlobalPromptModal />
     </div>
   );
 }
@@ -203,6 +375,7 @@ function ToolbarBtn({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       title={title}
       className="w-7 h-7 rounded-md flex items-center justify-center text-sm transition-all"

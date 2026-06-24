@@ -104,16 +104,41 @@ export default function Sidebar({ editor, documentId }: SidebarProps) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
+      let buffer = "";
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value);
-        for (const line of chunk.split("\n")) {
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process all complete SSE messages in the buffer
+        const lines = buffer.split("\n");
+        // Keep the last (potentially incomplete) line in the buffer
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const data = line.slice(6);
+            const data = line.slice(6); // "data: ".length === 6
             if (data === "[DONE]") { setLoading(false); break; }
-            if (data.startsWith("[ERROR]")) { setError(data.slice(7)); setLoading(false); break; }
+            if (data.startsWith("[ERROR]")) { setError(data.slice(7).trim()); setLoading(false); break; }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) setResult((prev) => prev + parsed.content);
+            } catch (e) {
+              setResult((prev) => prev + data);
+            }
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.startsWith("data: ")) {
+        const data = buffer.slice(6);
+        if (data && data !== "[DONE]" && !data.startsWith("[ERROR]")) {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) setResult((prev) => prev + parsed.content);
+          } catch (e) {
             setResult((prev) => prev + data);
           }
         }
@@ -154,7 +179,7 @@ export default function Sidebar({ editor, documentId }: SidebarProps) {
   return (
     <>
       {/* Floating trigger */}
-      <div className="absolute right-0 top-16 translate-x-1/2 z-20">
+      <div className="absolute right-4 top-16 z-20">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl transition-all"
@@ -175,9 +200,10 @@ export default function Sidebar({ editor, documentId }: SidebarProps) {
       {/* AI Panel */}
       {isOpen && (
         <div
-          className="w-72 h-full flex flex-col shrink-0 animate-slide-in-r"
+          className="absolute right-0 top-0 bottom-0 w-72 flex flex-col z-50 shadow-2xl animate-slide-in-r"
           style={{
             background: "rgba(8,10,15,0.95)",
+            backdropFilter: "blur(12px)",
             borderLeft: "1px solid rgba(255,255,255,0.07)",
           }}
         >

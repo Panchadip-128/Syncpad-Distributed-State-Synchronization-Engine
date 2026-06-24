@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FileText, Settings, LogOut, LayoutDashboard, Copy, Moon, Sun } from "lucide-react";
+import { Search, FileText, Settings, LogOut, LayoutDashboard, Copy, Moon, Sun, History } from "lucide-react";
+import { fetchApi } from "@/lib/api";
 
 type Action = {
   id: string;
@@ -60,6 +61,18 @@ export default function CommandPalette() {
       section: "Document",
     },
     {
+      id: "time-travel",
+      name: "Toggle Time-Travel Engine",
+      icon: <History className="w-4 h-4 text-violet-400" />,
+      shortcut: ["⌘", "⇧", "T"],
+      perform: () => {
+        // Dispatch a keyboard event so the doc page picks it up
+        const e = new KeyboardEvent("keydown", { key: "T", ctrlKey: true, shiftKey: true, bubbles: true });
+        window.dispatchEvent(e);
+      },
+      section: "Document",
+    },
+    {
       id: "theme-dark",
       name: "Switch to Dark Theme",
       icon: <Moon className="w-4 h-4 text-slate-400" />,
@@ -77,7 +90,10 @@ export default function CommandPalette() {
       id: "logout",
       name: "Log Out",
       icon: <LogOut className="w-4 h-4 text-rose-400" />,
-      perform: () => router.push("/login"),
+      perform: async () => {
+        try { await fetchApi("/auth/logout", { method: "POST" }); } catch {}
+        router.push("/login");
+      },
       section: "Settings",
     },
   ];

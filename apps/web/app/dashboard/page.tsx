@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
-import { FileText, Activity, Link as LinkIcon, RefreshCw, Search } from "lucide-react";
+import { FileText, Activity, Link as LinkIcon, RefreshCw, Search, LogOut, User } from "lucide-react";
+import CommandPalette from "@/components/CommandPalette";
 
 // ─── Debounce hook ─────────────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const router = useRouter();
   const debouncedSearch = useDebounce(search, 300);
 
@@ -135,6 +137,13 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Failed to delete document", error);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetchApi("/auth/logout", { method: "POST" });
+    } catch {}
+    router.push("/login");
   };
 
   // Client-side filtering is now handled by the backend via debounced search.
@@ -246,6 +255,38 @@ export default function Dashboard() {
               <span className="hidden sm:inline">New Document</span>
               <span className="sm:hidden">New</span>
             </button>
+
+            {/* User menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all border border-white/8"
+                title="Account"
+              >
+                <User className="w-4 h-4" />
+              </button>
+              {showUserMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-2 w-44 z-50 rounded-xl overflow-hidden animate-scale-in"
+                    style={{
+                      background: "rgba(13,17,23,0.98)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -457,6 +498,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Command Palette */}
+      <CommandPalette />
     </div>
   );
 }

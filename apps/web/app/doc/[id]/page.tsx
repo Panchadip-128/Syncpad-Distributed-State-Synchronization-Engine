@@ -10,6 +10,7 @@ import VersionHistory from "@/components/VersionHistory";
 import BranchVisualizer from "@/components/BranchVisualizer";
 import { fetchApi } from "@/lib/api";
 import { useKeyboardShortcuts, EDITOR_SHORTCUTS } from "@/lib/useKeyboardShortcuts";
+import { exportToPdf } from "@/lib/exportPdf";
 import Link from "next/link";
 import * as Y from "yjs";
 import DocumentOutline from "@/components/DocumentOutline";
@@ -17,6 +18,10 @@ import Minimap from "@/components/Minimap";
 import { ShareModal } from "@/components/ShareModal";
 import { TelemetryDashboard } from "@/components/TelemetryDashboard";
 import { TimeTravelSlider } from "@/components/TimeTravelSlider";
+import CommandPalette from "@/components/CommandPalette";
+import { CopilotSidebar } from "@/components/CopilotSidebar";
+import { Bot, Zap } from "lucide-react";
+import { CollaborativeCanvas } from "@/components/CollaborativeCanvas";
 
 const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
 
@@ -73,10 +78,11 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
 
   const shortcuts = [
     { keys: `${mod} + S`, desc: "Save document" },
-    { keys: `${mod} + /`, desc: "Toggle AI Co-Author" },
-    { keys: `${mod} + T`, desc: "Toggle Telemetry Dashboard" },
+    { keys: `${mod} + /`, desc: "Toggle AI Co-Author sidebar" },
     { keys: `${mod} + Shift + E`, desc: "Export document" },
     { keys: `${mod} + D`, desc: "Branch (duplicate) document" },
+    { keys: `${mod} + Shift + T`, desc: "Toggle Time-Travel engine" },
+    { keys: `${mod} + K`, desc: "Open command palette" },
     { keys: "?", desc: "Show this help" },
     { keys: "Esc", desc: "Close panel / modal" },
   ];
@@ -151,11 +157,15 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
 function ExportDropdown({
   isOpen,
   onClose,
+  onExportPdf,
+  onExportDocx,
   onExportMarkdown,
   onExportText,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onExportPdf: () => void;
+  onExportDocx: () => void;
   onExportMarkdown: () => void;
   onExportText: () => void;
 }) {
@@ -172,6 +182,35 @@ function ExportDropdown({
         }}
       >
         <button
+          onClick={() => { onExportPdf(); onClose(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-white/8 transition-all text-left"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-rose-500">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <div>
+            <div className="font-medium">PDF Document</div>
+            <div className="text-[10px] text-slate-500">.pdf — read-only document</div>
+          </div>
+        </button>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+        
+        <button
+          onClick={() => { onExportDocx(); onClose(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-white/8 transition-all text-left"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-sky-400">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 14h6M9 10h6" />
+          </svg>
+          <div>
+            <div className="font-medium">Word Document</div>
+            <div className="text-[10px] text-slate-500">.docx — editable Word doc</div>
+          </div>
+        </button>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
+        <button
           onClick={() => { onExportMarkdown(); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-white/8 transition-all text-left"
         >
@@ -184,6 +223,7 @@ function ExportDropdown({
           </div>
         </button>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
         <button
           onClick={() => { onExportText(); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-white/8 transition-all text-left"
@@ -244,6 +284,10 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showTimeTravel, setShowTimeTravel] = useState(false);
+  const [showCopilot, setShowCopilot] = useState(false);
+  const [showLaser, setShowLaser] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">("saved");
 
   const [userOptions] = useState(() => {
     const colors = ["#f43f5e", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#06b6d4"];
@@ -319,19 +363,168 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   }, [editingTitle, draftTitle, title]);
 
   // ─── Export handlers ───────────────────────────────────────────────────
+  const handleExportPdf = useCallback(async () => {
+    if (!editorInstance) return;
+    try {
+      await exportToPdf(editorInstance, title);
+    } catch (err: any) {
+      console.error(err);
+      alert("Error generating PDF: " + err.message);
+    }
+  }, [editorInstance, title]);
+
+  const handleExportDocx = useCallback(async () => {
+    if (!editorInstance) return;
+    const safeName = (title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() || "untitled") + ".docx";
+
+    try {
+      // docx is 100% browser-safe (no fs/crypto deps)
+      const { Document, Paragraph, TextRun, HeadingLevel, Packer } = await import("docx");
+
+      const json = editorInstance.getJSON();
+      const children: any[] = [];
+
+      // Helper: convert inline TipTap nodes → TextRun[]
+      const nodeToRuns = (inlineNodes: any[]): TextRun[] =>
+        (inlineNodes || []).map((n: any) => {
+          const marks: string[] = (n.marks || []).map((m: any) => m.type);
+          return new TextRun({
+            text: n.text || "",
+            bold: marks.includes("bold"),
+            italics: marks.includes("italic"),
+            strike: marks.includes("strike"),
+            // underline: marks.includes("underline") ? {} : undefined, // omit to avoid enum import
+            font: marks.includes("code") ? "Courier New" : "Calibri",
+            size: marks.includes("code") ? 18 : 24,
+          });
+        });
+
+      const HL: Record<number, any> = {
+        1: HeadingLevel.HEADING_1,
+        2: HeadingLevel.HEADING_2,
+        3: HeadingLevel.HEADING_3,
+        4: HeadingLevel.HEADING_4,
+        5: HeadingLevel.HEADING_5,
+        6: HeadingLevel.HEADING_6,
+      };
+
+      // Document title as a big bold paragraph (TITLE heading not reliable across versions)
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: title, bold: true, size: 52, font: "Calibri" })],
+          spacing: { after: 320 },
+        })
+      );
+
+      for (const node of json.content || []) {
+        switch (node.type) {
+          case "heading":
+            children.push(new Paragraph({
+              children: nodeToRuns(node.content || []),
+              heading: HL[node.attrs?.level ?? 2] ?? HeadingLevel.HEADING_2,
+              spacing: { before: 280, after: 140 },
+            }));
+            break;
+
+          case "paragraph":
+            children.push(new Paragraph({
+              children: nodeToRuns(node.content || []),
+              spacing: { after: 200 },
+            }));
+            break;
+
+          case "blockquote":
+            for (const inner of node.content || []) {
+              children.push(new Paragraph({
+                children: [new TextRun({ text: "│ ", bold: true, color: "94A3B8" }), ...nodeToRuns(inner.content || [])],
+                indent: { left: 720 },
+                spacing: { after: 160 },
+              }));
+            }
+            break;
+
+          case "bulletList":
+            for (const item of node.content || []) {
+              children.push(new Paragraph({
+                children: [new TextRun("• "), ...nodeToRuns(item.content?.[0]?.content || [])],
+                indent: { left: 720, hanging: 360 },
+                spacing: { after: 100 },
+              }));
+            }
+            break;
+
+          case "orderedList": {
+            let idx = node.attrs?.start ?? 1;
+            for (const item of node.content || []) {
+              children.push(new Paragraph({
+                children: [new TextRun(`${idx}. `), ...nodeToRuns(item.content?.[0]?.content || [])],
+                indent: { left: 720, hanging: 360 },
+                spacing: { after: 100 },
+              }));
+              idx++;
+            }
+            break;
+          }
+
+          case "codeBlock": {
+            const code = (node.content || []).map((n: any) => n.text || "").join("");
+            for (const line of code.split("\n")) {
+              children.push(new Paragraph({
+                children: [new TextRun({ text: line || " ", font: "Courier New", size: 18, color: "374151" })],
+                spacing: { after: 0 },
+              }));
+            }
+            children.push(new Paragraph({ spacing: { after: 200 } }));
+            break;
+          }
+
+          case "horizontalRule":
+            // Render as an empty paragraph with bottom border removed (no enum needed)
+            children.push(new Paragraph({ spacing: { before: 160, after: 160 } }));
+            break;
+
+          default: {
+            const text = (node.content || []).map((n: any) => n.text || "").join("");
+            if (text) children.push(new Paragraph({ children: [new TextRun(text)], spacing: { after: 200 } }));
+          }
+        }
+      }
+
+      const doc = new Document({
+        creator: "Syncpad",
+        title,
+        sections: [{ properties: {}, children }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = safeName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error(err);
+      alert("Error generating Word document: " + err.message);
+    }
+  }, [editorInstance, title]);
+
+
   const handleExportMarkdown = useCallback(() => {
     if (!editorInstance) return;
     const html = editorInstance.getHTML();
     const md = `# ${title}\n\n${htmlToMarkdown(html)}`;
-    const safeName = title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-    downloadFile(md, `${safeName}.md`, "text/markdown;charset=utf-8");
+    const safeName = (title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() || "untitled") + ".md";
+    downloadFile(md, safeName, "text/markdown;charset=utf-8");
   }, [editorInstance, title]);
 
   const handleExportText = useCallback(() => {
     if (!editorInstance) return;
     const text = editorInstance.getText();
-    const safeName = title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-    downloadFile(`${title}\n${"=".repeat(title.length)}\n\n${text}`, `${safeName}.txt`, "text/plain;charset=utf-8");
+    const safeName = (title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() || "untitled") + ".txt";
+    downloadFile(`${title}\n${"=".repeat(title.length)}\n\n${text}`, safeName, "text/plain;charset=utf-8");
   }, [editorInstance, title]);
 
   // ─── Branch handler ────────────────────────────────────────────────────
@@ -350,8 +543,17 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
     { key: "/", ctrl: true, handler: () => setSidebarOpen((p) => !p), description: "Toggle AI" },
     { key: "e", ctrl: true, shift: true, handler: () => setShowExport((p) => !p), description: "Export" },
     { key: "d", ctrl: true, handler: handleBranch, description: "Branch" },
+    { key: "t", ctrl: true, shift: true, handler: () => setShowTimeTravel((p) => !p), description: "Time Travel" },
+    { key: "l", ctrl: true, shift: true, handler: () => setShowLaser((p) => !p), description: "Laser Pointer" },
     { key: "?", handler: () => setShowShortcuts((p) => !p), description: "Help" },
-    { key: "Escape", handler: () => { setShowShortcuts(false); setShowExport(false); setSidebarOpen(false); }, description: "Close" },
+    { key: "Escape", handler: () => { 
+      setShowShortcuts(false); 
+      setShowExport(false); 
+      setSidebarOpen(false); 
+      setShowTimeTravel(false); 
+      setShowLaser(false);
+      if (provider && provider.awareness) provider.awareness.setLocalStateField("laser", null);
+    }, description: "Close" },
   ]);
 
   if (loading) {
@@ -370,7 +572,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="min-h-screen bg-[#080a0f] text-white flex flex-col">
+    <div className="h-screen bg-[#080a0f] text-white flex flex-col overflow-hidden">
       {/* ── TOP HEADER ──────────────────────────────────── */}
       <header
         className="h-14 shrink-0 sticky top-0 z-30 flex items-center justify-between px-4 gap-3"
@@ -445,6 +647,8 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
             <ExportDropdown
               isOpen={showExport}
               onClose={() => setShowExport(false)}
+              onExportPdf={handleExportPdf}
+              onExportDocx={handleExportDocx}
               onExportMarkdown={handleExportMarkdown}
               onExportText={handleExportText}
             />
@@ -472,6 +676,51 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
             </svg>
           </button>
+
+          {/* Time Travel button */}
+          <button
+            onClick={() => setShowTimeTravel((p) => !p)}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              showTimeTravel
+                ? "text-indigo-300 bg-indigo-500/20 border border-indigo-500/30"
+                : "text-slate-500 hover:text-white hover:bg-white/8"
+            }`}
+            title="Time Travel (Ctrl+Shift+T)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </button>
+
+          {/* Laser Pointer button */}
+          <button
+            onClick={() => {
+              const nextState = !showLaser;
+              setShowLaser(nextState);
+              if (!nextState && provider && provider.awareness) {
+                provider.awareness.setLocalStateField("laser", null);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all border ${
+              showLaser
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border-rose-500/20 hover:border-rose-500/30'
+            }`}
+            title="Laser Pointer (Ctrl+Shift+L)"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Laser Pointer</span>
+          </button>
+
+          {/* Copilot button */}
+          <button
+            onClick={() => setShowCopilot(!showCopilot)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all border ${showCopilot ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 border-indigo-500/20 hover:border-indigo-500/30'}`}
+            title="AI Copilot"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Copilot</span>
+          </button>
         </div>
       </header>
 
@@ -481,7 +730,14 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
         
         {/* Editor area */}
         <div ref={editorContainerRef} className="flex-1 overflow-auto transition-all pl-12 sm:pl-0 pr-0 lg:pr-[140px] relative scroll-smooth">
-          <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
+          {provider && (
+            <CollaborativeCanvas
+              provider={provider}
+              editorContainerRef={editorContainerRef}
+              isActive={showLaser}
+            />
+          )}
+          <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
             {provider ? (
               <Editor
                 provider={provider}
@@ -503,7 +759,12 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
         <Minimap editor={editorInstance} editorContainerRef={editorContainerRef} />
 
         {/* Time Travel Slider */}
-        <TimeTravelSlider />
+        <TimeTravelSlider isOpen={showTimeTravel} onClose={() => setShowTimeTravel(false)} />
+
+        {/* Copilot Sidebar */}
+        {showCopilot && editorInstance && (
+          <CopilotSidebar editor={editorInstance} onClose={() => setShowCopilot(false)} />
+        )}
 
         {/* AI Sidebar — now controlled by sidebarOpen OR its own internal state */}
         {editorInstance && (
@@ -539,6 +800,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
       <ShareModal isOpen={showShare} onClose={() => setShowShare(false)} documentId={id} />
       <SaveToast show={showSaveToast} />
+      <CommandPalette />
     </div>
   );
 }

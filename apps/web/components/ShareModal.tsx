@@ -17,7 +17,7 @@ export function ShareModal({
 
   if (!isOpen) return null;
 
-  const link = `http://localhost:3000/doc/${documentId}`;
+  const link = typeof window !== "undefined" ? `${window.location.origin}/doc/${documentId}` : `/doc/${documentId}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(link);

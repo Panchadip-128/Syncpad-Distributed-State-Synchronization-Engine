@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import contextlib
 
 from database import engine, Base
-from routers import auth, docs, ai
+from routers import auth, docs, ai, pdf
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +23,15 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Syncpad API", lifespan=lifespan, docs_url="/api-docs")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Allow CORS from the frontend
 app.add_middleware(
@@ -37,7 +45,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(docs.router)
 app.include_router(ai.router)
+app.include_router(pdf.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Syncpad API"}
+    return {"message": "Welcome to the Syncpad API!"}
+

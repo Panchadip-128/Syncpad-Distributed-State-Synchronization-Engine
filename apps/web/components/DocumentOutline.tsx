@@ -17,7 +17,7 @@ interface OutlineItem {
 
 export default function DocumentOutline({ editor }: DocumentOutlineProps) {
   const [items, setItems] = useState<OutlineItem[]>([]);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function DocumentOutline({ editor }: DocumentOutlineProps) {
 
   return (
     <div 
-      className={`absolute left-0 top-14 bottom-8 flex flex-col transition-all duration-300 z-20 ${isOpen ? 'w-64' : 'w-0'}`}
+      className={`absolute left-0 top-0 bottom-0 flex flex-col transition-all duration-300 z-20 ${isOpen ? 'w-64' : 'w-0'}`}
       style={{
         background: "rgba(8,10,15,0.8)",
         borderRight: isOpen ? "1px solid rgba(255,255,255,0.06)" : "none",
