@@ -41,27 +41,9 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         if (snapshotStr === lastSavedSnapshotStrRef.current) return;
         lastSavedSnapshotStrRef.current = snapshotStr;
 
-        // Try to generate a preview PNG using tldraw's built-in export API
-        let previewImage: string | null = null;
-        try {
-          const shapeIds = [...tldrawEditor.getCurrentPageShapeIds()];
-          if (shapeIds.length > 0) {
-            const result = await tldrawEditor.toImageDataUrl(shapeIds, {
-              format: "png",
-              background: true,
-              padding: 16,
-              scale: 1.5,
-            });
-            previewImage = result.url ?? null;
-          }
-        } catch (imgErr) {
-          console.warn("WhiteboardExtension: preview generation failed", imgErr);
-        }
-
         updateAttributesRef.current({
           snapshot: snapshotStr,
           lastEditorId: myEditorId.current,
-          ...(previewImage ? { previewImage } : {}),
         });
       } catch (err) {
         console.error("Failed to save whiteboard snapshot:", err);
@@ -80,8 +62,8 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
           isRemoteChange.current = true;
           const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
           if (parsed && parsed.document) {
-            tldrawEditor.store.mergeRemoteChanges(() => {
-              tldrawEditor.store.put(Object.values(parsed.document) as any);
+            import("tldraw").then(({ loadSnapshot }) => {
+              loadSnapshot(tldrawEditor.store, parsed);
             });
           }
           lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
@@ -120,9 +102,12 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         isRemoteChange.current = true;
         const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
         if (parsed && parsed.document) {
-          const incomingRecords = Object.values(parsed.document) as any[];
-          tldrawEditor.store.mergeRemoteChanges(() => {
-            tldrawEditor.store.put(incomingRecords);
+          import("tldraw").then(({ getSnapshot, loadSnapshot }) => {
+            const currentSnap = getSnapshot(tldrawEditor.store);
+            loadSnapshot(tldrawEditor.store, {
+              document: parsed.document,
+              session: currentSnap.session,
+            });
           });
         }
         lastSavedSnapshotStrRef.current = remoteSnapshotStr;
@@ -133,6 +118,31 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       isRemoteChange.current = false;
     }
   }, [node.attrs.snapshot, node.attrs.lastEditorId]);
+
+  const handleToggleOpen = async () => {
+    if (isOpen) {
+      const tldrawEditor = tldrawEditorRef.current;
+      if (tldrawEditor) {
+        try {
+          const shapeIds = [...tldrawEditor.getCurrentPageShapeIds()];
+          if (shapeIds.length > 0) {
+            const result = await tldrawEditor.toImageDataUrl(shapeIds, {
+              format: "png",
+              background: true,
+              padding: 16,
+              scale: 1.5,
+            });
+            if (result && result.url) {
+              updateAttributesRef.current({ previewImage: result.url });
+            }
+          }
+        } catch (e) {
+          console.warn("Preview generation failed on close", e);
+        }
+      }
+    }
+    setIsOpen(!isOpen);
+  };
 
   // Reset viewport zoom and scroll
   const handleResetView = () => {
@@ -162,7 +172,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
             </button>
           )}
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={handleToggleOpen}
             onPointerDown={(e) => e.stopPropagation()}
             className="p-1.5 hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-200 transition-colors"
             title={isOpen ? "Minimize Whiteboard" : "Maximize Whiteboard"}
