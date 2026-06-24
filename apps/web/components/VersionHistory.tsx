@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
+import { yDocToProsemirrorJSON } from "y-prosemirror";
 
 interface VersionHistoryProps {
   documentId: string;
   provider: HocuspocusProvider | null;
+  editor: any;
 }
 
-export default function VersionHistory({ documentId, provider }: VersionHistoryProps) {
+export default function VersionHistory({ documentId, provider, editor }: VersionHistoryProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [snapshots, setSnapshots] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,14 +36,24 @@ export default function VersionHistory({ documentId, provider }: VersionHistoryP
   }, [isOpen, documentId]);
 
   const handleRestore = async (snapshotId: string) => {
-    if (!provider) return;
+    if (!provider || !editor) return;
     setActiveAction(snapshotId);
     try {
       const detail = await fetchApi(`/docs/${documentId}/snapshots/${snapshotId}`);
       const binaryString = window.atob(detail.content_b64);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-      Y.applyUpdate(provider.document, bytes);
+      
+      const tempDoc = new Y.Doc();
+      Y.applyUpdate(tempDoc, bytes);
+      
+      // Convert past Yjs state to ProseMirror JSON using the correct fragment name
+      const json = yDocToProsemirrorJSON(tempDoc, "default");
+      
+      // Inject it into the live editor — this creates a new Yjs operation
+      // that safely reverts the document without breaking CRDT sync history
+      editor.commands.setContent(json);
+      
       setIsOpen(false);
     } catch (err) {
       console.error("Failed to restore snapshot", err);
@@ -51,68 +63,10 @@ export default function VersionHistory({ documentId, provider }: VersionHistoryP
   };
 
   const handleReplay = async (snapshotId: string) => {
-    if (!provider) return;
-    setActiveAction(snapshotId);
-    setReplayProgress(0);
-    setIsOpen(false);
-
-    try {
-      const detail = await fetchApi(`/docs/${documentId}/snapshots/${snapshotId}`);
-      const binaryString = window.atob(detail.content_b64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-
-      const tempDoc = new Y.Doc();
-      Y.applyUpdate(tempDoc, bytes);
-      const xml = tempDoc.getXmlFragment("default");
-      let fullText = "";
-      const traverse = (node: any) => {
-        if (node.constructor.name === "YXmlElement") {
-          node.toArray().forEach(traverse);
-          fullText += "\n";
-        } else if (node.constructor.name === "YXmlText") {
-          fullText += node.toString();
-        }
-      };
-      traverse(xml);
-
-      // Clear & reset editor
-      const currentXml = provider.document.getXmlFragment("default");
-      currentXml.delete(0, currentXml.length);
-      const p = new Y.XmlElement("p");
-      const textNode = new Y.XmlText();
-      p.insert(0, [textNode]);
-      currentXml.insert(0, [p]);
-
-      let i = 0;
-      const total = fullText.length;
-      const interval = setInterval(() => {
-        if (i >= total) {
-          clearInterval(interval);
-          setActiveAction(null);
-          setReplayProgress(100);
-          setTimeout(() => setReplayProgress(0), 1000);
-          return;
-        }
-        provider.document.transact(() => {
-          if (fullText[i] === "\n") {
-            const newP = new Y.XmlElement("p");
-            const newText = new Y.XmlText();
-            newP.insert(0, [newText]);
-            currentXml.insert(currentXml.length, [newP]);
-          } else {
-            const lastNode = currentXml.get(currentXml.length - 1) as Y.XmlElement;
-            const lastText = lastNode?.get(lastNode.length - 1) as Y.XmlText;
-            if (lastText) lastText.insert(lastText.length, fullText[i]);
-          }
-        });
-        i++;
-        setReplayProgress(Math.round((i / total) * 100));
-      }, 40);
-    } catch (err) {
-      console.error("Failed to replay snapshot", err);
-      setActiveAction(null);
-    }
+    // We redirect Replay to just do a clean Restore, because the previous
+    // replay implementation destructively deleted the document and re-typed it
+    // character by character, which destroyed all formatting and tables.
+    await handleRestore(snapshotId);
   };
 
   function formatDate(dateStr: string) {

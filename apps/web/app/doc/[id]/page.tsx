@@ -629,7 +629,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
         <div className="flex items-center gap-2 shrink-0">
           {provider && <BranchVisualizer documentId={id} provider={provider} />}
           {provider && <PresenceBar provider={provider} />}
-          {provider && <VersionHistory documentId={id} provider={provider} />}
+          {provider && <VersionHistory documentId={id} provider={provider} editor={editorInstance} />}
 
           {/* Export button */}
           <div className="relative">
