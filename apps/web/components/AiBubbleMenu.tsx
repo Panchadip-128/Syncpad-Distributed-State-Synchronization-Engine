@@ -15,6 +15,9 @@ export function AiBubbleMenu({ editor, yDoc, userName = "Anonymous" }: { editor:
   const [isProcessing, setIsProcessing] = useState(false);
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -163,15 +166,38 @@ export function AiBubbleMenu({ editor, yDoc, userName = "Anonymous" }: { editor:
     setShow(false);
   };
 
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging.current) {
+      setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDragging.current = false;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
   if (!editor || !show) return null;
 
   return (
     <div
-      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-auto flex flex-wrap items-center justify-center p-1.5 gap-1 rounded-xl shadow-[0_8px_32px_rgba(99,102,241,0.25)] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      className="fixed bottom-24 left-1/2 z-[100] w-auto flex flex-wrap items-center justify-center p-1.5 gap-1 rounded-xl shadow-[0_8px_32px_rgba(99,102,241,0.25)] overflow-hidden cursor-move touch-none"
       style={{
         background: "rgba(15,17,26,0.97)",
         border: "1px solid rgba(99,102,241,0.35)",
         backdropFilter: "blur(12px)",
+        transform: `translate(calc(-50% + ${position.x}px), ${position.y}px)`,
+        transition: isDragging.current ? "none" : "transform 0.1s ease-out",
       }}
     >
       {isProcessing ? (

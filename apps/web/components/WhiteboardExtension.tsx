@@ -52,7 +52,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         }
 
         updateAttributes({
-          snapshot,
+          snapshot: snapshotStr,
           ...(previewImage ? { previewImage } : {}),
         });
       } catch (err) {
@@ -70,8 +70,9 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       if (node.attrs.snapshot) {
         try {
           isRemoteChange.current = true;
-          loadSnapshot(tldrawEditor.store, node.attrs.snapshot);
-          lastSavedSnapshotStrRef.current = JSON.stringify(node.attrs.snapshot);
+          const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
+          loadSnapshot(tldrawEditor.store, parsed);
+          lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
         } catch (err) {
           console.error("Error loading initial whiteboard snapshot:", err);
         } finally {
@@ -100,10 +101,11 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
     if (!tldrawEditor || !node.attrs.snapshot) return;
 
     try {
-      const remoteSnapshotStr = JSON.stringify(node.attrs.snapshot);
+      const remoteSnapshotStr = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
       if (remoteSnapshotStr !== lastSavedSnapshotStrRef.current) {
         isRemoteChange.current = true;
-        loadSnapshot(tldrawEditor.store, node.attrs.snapshot);
+        const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
+        loadSnapshot(tldrawEditor.store, parsed);
         lastSavedSnapshotStrRef.current = remoteSnapshotStr;
       }
     } catch (err) {
