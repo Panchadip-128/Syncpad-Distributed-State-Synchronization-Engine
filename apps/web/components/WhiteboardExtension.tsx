@@ -53,6 +53,7 @@ function TldrawEditorWrapper({
 }) {
   const [editor, setEditor] = useState<any>(null);
   const localUpdateInProgressRef = useRef(false);
+  const isInternalUpdateRef = useRef(false);
 
   const handleMount = useCallback((app: any) => {
     setEditor(app);
@@ -60,24 +61,29 @@ function TldrawEditorWrapper({
       try {
         const parsed = JSON.parse(initialSnapshotStr);
         if (parsed && typeof parsed === 'object') {
-          app.store.loadSnapshot(parsed);
+          if (parsed.elements || parsed.type === 'excalidraw' || (!parsed.store && !Array.isArray(parsed))) {
+            return;
+          }
+          isInternalUpdateRef.current = true;
+          try {
+            app.store.loadSnapshot(parsed);
+          } catch(e) {}
+          setTimeout(() => { isInternalUpdateRef.current = false; }, 50);
         }
-      } catch (e) {
-        console.warn("Failed to load initial snapshot:", e);
-      }
+      } catch (e) {}
     }
   }, [initialSnapshotStr]);
 
+  // Listen for local drawing changes
   useEffect(() => {
     if (!editor) return;
 
-    // Listen to local changes and debounce them to prevent infinite loop crashes
     let timeoutId: NodeJS.Timeout;
     
     const unlisten = editor.store.listen(
       (entry: any) => {
-        // We only care about user actions, not remote merges
-        if (entry.source !== 'user') return;
+        // Prevent infinite loops during remote merges
+        if (isInternalUpdateRef.current || entry.source !== 'user') return;
         
         localUpdateInProgressRef.current = true;
         clearTimeout(timeoutId);
@@ -86,12 +92,10 @@ function TldrawEditorWrapper({
           try {
             const snapshot = editor.store.getSnapshot();
             onChange(JSON.stringify(snapshot));
-          } catch (e) {
-            console.error("Failed to serialize snapshot:", e);
-          } finally {
+          } catch (e) {} finally {
             setTimeout(() => { localUpdateInProgressRef.current = false; }, 500);
           }
-        }, 1000); // 1s debounce to protect Yjs/TipTap
+        }, 1000); 
       },
       { source: 'user', scope: 'document' }
     );
@@ -101,6 +105,28 @@ function TldrawEditorWrapper({
       clearTimeout(timeoutId);
     };
   }, [editor, onChange]);
+
+  // Handle incoming remote changes from TipTap/Yjs
+  useEffect(() => {
+    // Only load remote changes if the user is not actively drawing
+    if (!editor || localUpdateInProgressRef.current) return;
+    
+    if (initialSnapshotStr) {
+      try {
+        const parsed = JSON.parse(initialSnapshotStr);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.elements || parsed.type === 'excalidraw' || (!parsed.store && !Array.isArray(parsed))) {
+            return; // Ignore corrupted or Excalidraw snapshots
+          }
+          isInternalUpdateRef.current = true;
+          try {
+            editor.store.loadSnapshot(parsed);
+          } catch(e) {}
+          setTimeout(() => { isInternalUpdateRef.current = false; }, 50);
+        }
+      } catch (e) {}
+    }
+  }, [initialSnapshotStr, editor]);
 
   return (
     <div className="w-full h-full relative" style={{ zIndex: 1 }}>
