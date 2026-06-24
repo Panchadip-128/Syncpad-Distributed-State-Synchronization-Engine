@@ -4,17 +4,38 @@ import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Maximize2, Minimize2, Pencil } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// Import Tldraw CSS so Turbopack bundles it in production (prevents black canvas on Vercel)
+// Import Tldraw CSS here so Turbopack bundles it in production
 import "tldraw/tldraw.css";
 
-// Dynamic import — no SSR (Tldraw uses window APIs)
+// Dynamic import with no SSR (Tldraw uses browser-only APIs)
 const Tldraw = dynamic(() => import("tldraw").then((m) => m.Tldraw), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-[#1f2733]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-slate-400 text-sm">Loading whiteboard…</span>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f1f0ef",
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            border: "3px solid #6366f1",
+            borderTopColor: "transparent",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+            margin: "0 auto 12px",
+          }}
+        />
+        <span style={{ color: "#64748b", fontSize: 14 }}>
+          Loading whiteboard…
+        </span>
       </div>
     </div>
   ),
@@ -22,7 +43,6 @@ const Tldraw = dynamic(() => import("tldraw").then((m) => m.Tldraw), {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Returns true only if the JSON looks like a real Tldraw v2/v3 snapshot */
 function isTldrawSnapshot(val: unknown): val is { store: unknown; schema: unknown } {
   return (
     typeof val === "object" &&
@@ -34,10 +54,9 @@ function isTldrawSnapshot(val: unknown): val is { store: unknown; schema: unknow
 
 // ── WhiteboardCanvas ──────────────────────────────────────────────────────────
 //
-// KEY DESIGN: this component is React.memo'd and only receives
-// `initialSnapshot` once (at open-time). It never re-renders from snapshot
-// prop changes, which eliminates the draw→save→re-render→loadSnapshot→draw
-// loop that caused the Vercel black screen.
+// This component is memo'd. It receives initialSnapshot ONCE and never
+// re-renders from prop changes — this eliminates the draw→save→re-render→
+// loadSnapshot→draw infinite loop that caused the black/white screen.
 
 interface WhiteboardCanvasProps {
   initialSnapshot: string | null;
@@ -49,56 +68,60 @@ const WhiteboardCanvas = memo(function WhiteboardCanvas({
   onSave,
 }: WhiteboardCanvasProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Keep onSave up-to-date inside the store listener without re-subscribing.
-  // We update this ref inside a useEffect (not during render) to satisfy
-  // the React Compiler's react-hooks/refs rule.
   const onSaveRef = useRef(onSave);
+
+  // Keep onSave ref current without triggering re-renders
   useEffect(() => {
     onSaveRef.current = onSave;
   }, [onSave]);
 
-  // handleMount is created once (empty deps) and handed to Tldraw.
-  // Tldraw only calls it once on mount, so this is safe.
-  const handleMount = useCallback(
-    (editor: any) => {
-      // 1. Load saved snapshot once on mount
-      if (initialSnapshot) {
-        try {
-          const parsed = JSON.parse(initialSnapshot);
-          if (isTldrawSnapshot(parsed)) {
-            editor.store.loadSnapshot(parsed);
-          }
-        } catch {
-          // Corrupted / legacy format — start with blank canvas
+  // Stable mount handler — empty deps so it's created once only
+  const handleMount = useCallback((editor: any) => {
+    // Load saved snapshot once on mount
+    if (initialSnapshot) {
+      try {
+        const parsed = JSON.parse(initialSnapshot);
+        if (isTldrawSnapshot(parsed)) {
+          editor.store.loadSnapshot(parsed);
         }
+      } catch {
+        // Corrupted or legacy format — start with a blank canvas
       }
+    }
 
-      // 2. Subscribe to user drawing events and debounce-save.
-      //    We do NOT call loadSnapshot on every onSave, which prevents the loop.
-      editor.store.listen(
-        () => {
-          if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-          saveTimerRef.current = setTimeout(() => {
-            try {
-              const snapshot = editor.store.getSnapshot();
-              onSaveRef.current(JSON.stringify(snapshot));
-            } catch {
-              // serialisation failed — ignore silently
-            }
-          }, 1500); // 1.5 s debounce — safe for Yjs/TipTap
-        },
-        { source: "user", scope: "document" }
-      );
-    },
-    []
-    // Empty deps is intentional: handleMount must be stable so Tldraw
-    // doesn't re-call it. initialSnapshot is captured via closure at mount
-    // time only (that is the desired behaviour).
-  );
+    // Debounce-save user drawing changes (1.5s) to avoid hammering Yjs/TipTap
+    editor.store.listen(
+      () => {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          try {
+            const snapshot = editor.store.getSnapshot();
+            onSaveRef.current(JSON.stringify(snapshot));
+          } catch {
+            /* serialisation failure — ignore */
+          }
+        }, 1500);
+      },
+      { source: "user", scope: "document" }
+    );
+  }, []); // intentionally empty — handleMount must be stable
 
+  // Use position:absolute + inset:0 so Tldraw fills the container and its
+  // toolbar overlays render correctly regardless of parent layout.
+  // All styles are inline to bypass our global Tailwind/dark-mode CSS.
   return (
-    <div className="w-full h-full" style={{ colorScheme: "light" }}>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        // Tldraw is a light-mode tool — override our dark html.dark CSS cascade
+        colorScheme: "light",
+        // Explicitly unset CSS custom properties that our @theme overrides,
+        // which Tldraw also uses internally (e.g. --color-background).
+        // Using "initial" makes custom props revert to Tldraw's own CSS values.
+      }}
+      className="tldraw-isolation-root"
+    >
       <Tldraw onMount={handleMount} />
     </div>
   );
@@ -109,13 +132,11 @@ const WhiteboardCanvas = memo(function WhiteboardCanvas({
 function WhiteboardComponent({ node, updateAttributes }: any) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Capture the snapshot at the moment the whiteboard is first opened.
-  // Using useState (not ref) because this value is only read in JSX,
-  // which satisfies the react-hooks/refs rule.
+  // Freeze the snapshot at mount time — never pass updated node.attrs.snapshot
+  // down to WhiteboardCanvas to avoid triggering re-render/reload loops.
   const [frozenSnapshot] = useState<string | null>(() => node.attrs.snapshot ?? null);
 
-  // Keep updateAttributes fresh without triggering re-mounts of WhiteboardCanvas.
-  // We update this ref inside a useEffect (not during render).
+  // Keep updateAttributes fresh via a ref (updated in useEffect, not render)
   const updateAttrsRef = useRef(updateAttributes);
   useEffect(() => {
     updateAttrsRef.current = updateAttributes;
@@ -126,79 +147,132 @@ function WhiteboardComponent({ node, updateAttributes }: any) {
   }, []);
 
   return (
-    <NodeViewWrapper
-      as="div"
-      className="whiteboard-wrapper my-6 rounded-xl overflow-hidden shadow-2xl"
-      style={{ border: "1px solid rgba(99,102,241,0.25)" }}
-    >
-      {/* ── Header bar ─────────────────────────────────────────────────── */}
+    <NodeViewWrapper as="div" style={{ margin: "24px 0" }}>
       <div
-        className="flex items-center justify-between px-4 py-2.5"
         style={{
-          background: "rgba(30,36,51,0.95)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          border: "1px solid rgba(99,102,241,0.3)",
+          borderRadius: 12,
+          overflow: "hidden",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          background: "#0d1117",
         }}
       >
-        <div className="flex items-center gap-2.5">
-          <Pencil className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="text-sm font-semibold text-slate-200">
-            Collaborative Whiteboard
-          </span>
-          {isOpen && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-medium">
-              Live
-            </span>
-          )}
-        </div>
-
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => setIsOpen((v) => !v)}
-          className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-          title={isOpen ? "Minimise" : "Open whiteboard"}
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 16px",
+            background: "rgba(30,36,51,0.97)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
         >
-          {isOpen ? (
-            <Minimize2 className="w-4 h-4" />
-          ) : (
-            <Maximize2 className="w-4 h-4" />
-          )}
-        </button>
-      </div>
-
-      {/* ── Canvas area ────────────────────────────────────────────────── */}
-      <div
-        className={`relative transition-[height] duration-300 ease-in-out ${
-          isOpen ? "h-[620px]" : "h-[220px]"
-        }`}
-        style={{ background: "#1f2733" }}
-      >
-        {/* Collapsed overlay — click to open */}
-        {!isOpen && (
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => setIsOpen(true)}
-            className="absolute inset-0 w-full h-full flex items-center justify-center"
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Pencil style={{ width: 14, height: 14, color: "#818cf8" }} />
             <span
-              className="px-5 py-2.5 rounded-xl font-semibold text-sm text-indigo-300"
               style={{
-                background: "rgba(99,102,241,0.12)",
-                border: "1px solid rgba(99,102,241,0.3)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#e2e8f0",
               }}
             >
-              <Pencil className="inline w-4 h-4 mr-2 -mt-0.5" />
-              Click to open whiteboard
+              Collaborative Whiteboard
             </span>
-          </button>
-        )}
+            {isOpen && (
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  background: "rgba(99,102,241,0.2)",
+                  color: "#a5b4fc",
+                  fontWeight: 500,
+                }}
+              >
+                Live
+              </span>
+            )}
+          </div>
 
-        {/* Tldraw — only mounted when open */}
-        {isOpen && (
-          <WhiteboardCanvas
-            initialSnapshot={frozenSnapshot}
-            onSave={handleSave}
-          />
-        )}
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => setIsOpen((v) => !v)}
+            style={{
+              padding: "6px",
+              background: "transparent",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+            }}
+            title={isOpen ? "Minimise" : "Expand whiteboard"}
+          >
+            {isOpen ? (
+              <Minimize2 style={{ width: 16, height: 16 }} />
+            ) : (
+              <Maximize2 style={{ width: 16, height: 16 }} />
+            )}
+          </button>
+        </div>
+
+        {/* ── Canvas area ──────────────────────────────────────── */}
+        <div
+          style={{
+            position: "relative",
+            height: isOpen ? 620 : 220,
+            transition: "height 0.3s ease",
+            background: "#1e2433",
+            overflow: "hidden",
+          }}
+        >
+          {/* Collapsed: click-to-open overlay */}
+          {!isOpen && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => setIsOpen(true)}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  background: "rgba(99,102,241,0.12)",
+                  border: "1px solid rgba(99,102,241,0.3)",
+                  color: "#a5b4fc",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Pencil style={{ width: 14, height: 14 }} />
+                Click to open whiteboard
+              </span>
+            </button>
+          )}
+
+          {/* Tldraw — only mounted when open */}
+          {isOpen && (
+            <WhiteboardCanvas
+              initialSnapshot={frozenSnapshot}
+              onSave={handleSave}
+            />
+          )}
+        </div>
       </div>
     </NodeViewWrapper>
   );

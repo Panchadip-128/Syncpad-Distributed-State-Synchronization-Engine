@@ -6,7 +6,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@import "tldraw/tldraw.css";
+/* tldraw/tldraw.css is imported directly in WhiteboardExtension.tsx
+   to ensure correct load order and avoid cascade conflicts. */
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS — SyncPad 2026 Design System
@@ -487,26 +488,28 @@
 .delay-500 { animation-delay: 500ms; }
 
 /* ─────────────────────────────────────────────
-   TLDRAW CSS ISOLATION
-   Prevent our dark-mode globals from overriding
-   Tldraw's internal element styles. Without this,
-   the canvas background goes black in production.
+   TLDRAW CSS VARIABLE ISOLATION
+   Our @theme inline block defines --color-background
+   as our dark #080a0f value. Tldraw v5 uses the same
+   CSS custom property for its canvas background.
+   Resetting it on the isolation root lets tldraw.css
+   values take effect inside the whiteboard container.
    ───────────────────────────────────────────── */
-.whiteboard-wrapper .tl-container,
-.whiteboard-wrapper .tl-container * {
-  /* Reset colour-scheme so Tldraw's own light-mode CSS wins */
-  color-scheme: light;
-  /* Don't let our global border utility bleed in */
-  border-color: revert;
+.tldraw-isolation-root {
+  /* Unset CSS variables that collide with Tldraw internals */
+  --color-background: initial;
+  --color-text: initial;
+  --color-primary: initial;
+  --color-low: initial;
+  --color-medium: initial;
+  --color-high: initial;
+  --color-hint: initial;
+  --color-selected: initial;
+  /* Prevent our global border utility from bleeding in */
+  --border: initial;
 }
 
-/* The outer container must always have a neutral background */
-.whiteboard-wrapper .tl-container {
-  background: #ffffff !important;
-}
-
-/* Keep Tldraw's canvas from inheriting our app's text colour */
-.whiteboard-wrapper canvas {
-  color: initial;
-  background: transparent;
+/* Spin animation for the loading placeholder */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
