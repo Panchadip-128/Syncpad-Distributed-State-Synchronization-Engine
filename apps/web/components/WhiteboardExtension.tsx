@@ -20,6 +20,13 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
   // Debounced save: persists snapshot + renders a preview image into node attrs
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const updateAttributesRef = useRef(updateAttributes);
+  const myEditorId = useRef(Math.random().toString(36).slice(2));
+  
+  useEffect(() => {
+    updateAttributesRef.current = updateAttributes;
+  }, [updateAttributes]);
+
   const scheduleSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
@@ -51,15 +58,16 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
           console.warn("WhiteboardExtension: preview generation failed", imgErr);
         }
 
-        updateAttributes({
+        updateAttributesRef.current({
           snapshot: snapshotStr,
+          lastEditorId: myEditorId.current,
           ...(previewImage ? { previewImage } : {}),
         });
       } catch (err) {
         console.error("Failed to save whiteboard snapshot:", err);
       }
     }, 600);
-  }, [updateAttributes]);
+  }, []);
 
   // Handle initialization/mounting of the Tldraw editor instance
   const handleMount = useCallback(
@@ -91,14 +99,16 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         tldrawEditorRef.current = null;
       };
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scheduleSave]
+    []
   );
 
   // Sync incoming changes from remote collaborators via TipTap/Yjs attributes
   useEffect(() => {
     const tldrawEditor = tldrawEditorRef.current;
     if (!tldrawEditor || !node.attrs.snapshot) return;
+    
+    // Ignore updates that we originally authored (echoed back by Yjs)
+    if (node.attrs.lastEditorId === myEditorId.current) return;
 
     try {
       const remoteSnapshotStr = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
@@ -113,7 +123,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
     } finally {
       isRemoteChange.current = false;
     }
-  }, [node.attrs.snapshot]);
+  }, [node.attrs.snapshot, node.attrs.lastEditorId]);
 
   // Reset viewport zoom and scroll
   const handleResetView = () => {
@@ -194,6 +204,9 @@ export const WhiteboardExtension = Node.create({
         default: null,
       },
       previewImage: {
+        default: null,
+      },
+      lastEditorId: {
         default: null,
       },
     };
