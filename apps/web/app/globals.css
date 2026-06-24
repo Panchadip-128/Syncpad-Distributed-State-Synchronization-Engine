@@ -6,6 +6,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Protect Excalidraw UI from Tailwind Preflight */
+.excalidraw * {
+  box-sizing: border-box;
+}
+.excalidraw button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
 /* ─────────────────────────────────────────────
    DESIGN TOKENS — SyncPad 2026 Design System
    ───────────────────────────────────────────── */
