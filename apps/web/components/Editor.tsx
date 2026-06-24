@@ -48,6 +48,7 @@ export default function Editor({
 }: EditorProps) {
   const [isDictating, setIsDictating] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const editorRef = useRef<any>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
@@ -63,8 +64,8 @@ export default function Editor({
             finalTranscript += event.results[i][0].transcript;
           }
         }
-        if (finalTranscript && editor) {
-          editor.chain().focus().insertContent(finalTranscript + " ").run();
+        if (finalTranscript && editorRef.current) {
+          editorRef.current.chain().focus().insertContent(finalTranscript + " ").run();
         }
       };
 
@@ -141,6 +142,10 @@ export default function Editor({
       if (onEditorReady) onEditorReady(editor);
     },
   });
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   return (
     <div className="editor-focus-ring rounded-2xl overflow-hidden" style={{

@@ -74,6 +74,20 @@ export default function Dashboard() {
   const router = useRouter();
   const debouncedSearch = useDebounce(search, 300);
 
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const docs = await fetchApi("/docs");
+      setDocuments(docs);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("401")) {
+        router.push("/login");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load on mount
   useEffect(() => {
     loadDocuments();
@@ -100,19 +114,7 @@ export default function Dashboard() {
     fetchFiltered();
   }, [debouncedSearch]);
 
-  const loadDocuments = async () => {
-    try {
-      setLoading(true);
-      const docs = await fetchApi("/docs");
-      setDocuments(docs);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("401")) {
-        router.push("/login");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const createDocument = async () => {
     setCreating(true);

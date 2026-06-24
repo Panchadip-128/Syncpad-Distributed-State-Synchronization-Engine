@@ -114,7 +114,7 @@ export function CommentsSidebar({ editor, yDoc, userName = "Anonymous" }: Commen
           <div className="text-center text-slate-500 text-sm mt-10">
             No active comments.
             <br />
-            <span className="text-xs">Highlight text and click "Comment" to add one.</span>
+            <span className="text-xs">Highlight text and click &quot;Comment&quot; to add one.</span>
           </div>
         ) : (
           comments

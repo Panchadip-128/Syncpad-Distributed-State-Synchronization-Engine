@@ -56,11 +56,11 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
   // Debounced save
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const updateAttributesRef = useRef(updateAttributes);
-  const myEditorId = useRef(Math.random().toString(36).slice(2));
-
   // Keep track of the last broadcasted string to avoid infinite loops
   const lastSavedSnapshotStrRef = useRef("");
   const isRemoteUpdateRef = useRef(false);
+
+  const [myEditorId] = useState(() => Math.random().toString(36).slice(2));
   
   useEffect(() => {
     updateAttributesRef.current = updateAttributes;
@@ -143,8 +143,8 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
   };
 
   // Prepare initial data once
-  const initialData = useRef<any>(null);
-  if (!initialData.current) {
+  const [initialData] = useState(() => {
+    let initialElements: any[] = [];
     if (node.attrs.snapshot) {
       try {
         const parsed = typeof node.attrs.snapshot === 'string' 
@@ -152,18 +152,19 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
           : node.attrs.snapshot;
           
         const elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
-        initialData.current = { elements: Array.isArray(elements) ? elements : [] };
-        
-        lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' 
-          ? node.attrs.snapshot 
-          : JSON.stringify(node.attrs.snapshot);
+        initialElements = Array.isArray(elements) ? elements : [];
       } catch (e) {
-        initialData.current = { elements: [] };
+        initialElements = [];
       }
-    } else {
-      initialData.current = { elements: [] };
     }
-  }
+    return { elements: initialElements };
+  });
+
+  useEffect(() => {
+    lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' 
+      ? node.attrs.snapshot 
+      : JSON.stringify(node.attrs.snapshot);
+  }, []);
 
   return (
     <NodeViewWrapper className="whiteboard-block-wrapper my-6 border border-slate-700/50 rounded-xl overflow-hidden bg-[#0d1117] shadow-xl">
@@ -221,7 +222,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
           <WhiteboardErrorBoundary>
             <Excalidraw 
               excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
-              initialData={initialData.current}
+              initialData={initialData}
               onChange={onChange}
               theme="dark"
             />

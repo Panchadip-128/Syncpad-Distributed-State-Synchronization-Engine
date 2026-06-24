@@ -116,13 +116,15 @@ export default function CommandPalette() {
   });
 
   // Group actions
-  const groupedActions = filteredActions.reduce((acc, action) => {
-    if (!acc[action.section]) acc[action.section] = [];
-    acc[action.section].push(action);
-    return acc;
-  }, {} as Record<string, Action[]>);
+  const groupedActions = React.useMemo(() => {
+    return filteredActions.reduce((acc, action) => {
+      if (!acc[action.section]) acc[action.section] = [];
+      acc[action.section].push(action);
+      return acc;
+    }, {} as Record<string, Action[]>);
+  }, [filteredActions]);
 
-  const flatActions = Object.values(groupedActions).flat();
+  const flatActions = React.useMemo(() => Object.values(groupedActions).flat(), [groupedActions]);
 
   // Reset active index on query change
   useEffect(() => {

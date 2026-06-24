@@ -168,19 +168,19 @@ export function AiBubbleMenu({ editor, yDoc, userName = "Anonymous" }: { editor:
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("button")) return;
-    isDragging.current = true;
+    setIsDragging(true);
     dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDragging.current) {
+    if (isDragging) {
       setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    isDragging.current = false;
+    setIsDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
@@ -197,7 +197,7 @@ export function AiBubbleMenu({ editor, yDoc, userName = "Anonymous" }: { editor:
         border: "1px solid rgba(99,102,241,0.35)",
         backdropFilter: "blur(12px)",
         transform: `translate(calc(-50% + ${position.x}px), ${position.y}px)`,
-        transition: isDragging.current ? "none" : "transform 0.1s ease-out",
+        transition: isDragging ? "none" : "transform 0.1s ease-out",
       }}
     >
       {isProcessing ? (
