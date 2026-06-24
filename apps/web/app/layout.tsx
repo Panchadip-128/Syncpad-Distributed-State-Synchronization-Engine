@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import "tldraw/tldraw.css";
+
 import CommandPalette from "@/components/CommandPalette";
 import OfflineDrawer from "@/components/OfflineDrawer";
 
