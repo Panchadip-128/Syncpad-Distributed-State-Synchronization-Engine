@@ -123,7 +123,8 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       tldrawEditorRef.current = tldrawEditor;
 
       // Listen to local user changes
-      const cleanup = tldrawEditor.store.listen(() => {
+      const cleanup = tldrawEditor.store.listen((entry: any) => {
+        if (entry && entry.source && entry.source !== 'user') return;
         if (isRemoteChange.current) return;
         scheduleSave();
       });
@@ -164,7 +165,10 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
     } catch (err) {
       console.error("Error syncing remote whiteboard snapshot:", err);
     } finally {
-      isRemoteChange.current = false;
+      // Delay resetting the flag because tldraw's store.listen fires asynchronously
+      setTimeout(() => {
+        isRemoteChange.current = false;
+      }, 100);
     }
   }, [node.attrs.snapshot, node.attrs.lastEditorId]);
 

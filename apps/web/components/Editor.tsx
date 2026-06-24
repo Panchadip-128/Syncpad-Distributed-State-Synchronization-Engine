@@ -99,6 +99,8 @@ export default function Editor({
         // Collaboration extension handles history
         // @ts-ignore: Tiptap types might not have history in this version
         history: false,
+        // @ts-ignore: Tiptap 3.x uses undoRedo instead of history
+        undoRedo: false,
       }),
       Collaboration.configure({ document: yDoc }),
       CollaborationCaret.configure({
