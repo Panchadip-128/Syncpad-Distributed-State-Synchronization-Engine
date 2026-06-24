@@ -46,7 +46,9 @@ function saveMockUsers(users: any[]) {
 }
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`;
+  // Ensure we don't end up with double slashes if API_URL has a trailing slash
+  const cleanApiUrl = API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL;
+  const url = `${cleanApiUrl}${endpoint}`;
 
   const mergedOptions: RequestInit = {
     ...options,
