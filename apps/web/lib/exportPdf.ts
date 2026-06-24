@@ -10,7 +10,7 @@
 
 export async function exportToPdf(editor: any, title: string): Promise<void> {
   // @ts-ignore
-  const jsPDFModule = await import("jspdf");
+  const jsPDFModule: any = await import("jspdf");
   const jsPDF = jsPDFModule.jsPDF ?? jsPDFModule.default?.jsPDF ?? jsPDFModule.default;
 
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });

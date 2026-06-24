@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig: any = {
   // Turbopack is default in Next.js 16
   turbopack: {},
   typescript: {

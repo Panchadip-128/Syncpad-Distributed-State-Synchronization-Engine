@@ -385,7 +385,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
       const children: any[] = [];
 
       // Helper: convert inline TipTap nodes → TextRun[]
-      const nodeToRuns = (inlineNodes: any[]): TextRun[] =>
+      const nodeToRuns = (inlineNodes: any[]): any[] =>
         (inlineNodes || []).map((n: any) => {
           const marks: string[] = (n.marks || []).map((m: any) => m.type);
           return new TextRun({
