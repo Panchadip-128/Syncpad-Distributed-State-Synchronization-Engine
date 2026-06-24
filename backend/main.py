@@ -36,7 +36,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Allow CORS from the frontend (localhost and production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for the hackathon/demo
+    allow_origin_regex=".*", # Bypasses the * restriction when credentials are true
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
