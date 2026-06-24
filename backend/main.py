@@ -33,10 +33,10 @@ app = FastAPI(title="Syncpad API", lifespan=lifespan, docs_url="/api-docs")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Allow CORS from the frontend
+# Allow CORS from the frontend (localhost and production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"],
+    allow_origins=["*"], # Allow all origins for the hackathon/demo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
