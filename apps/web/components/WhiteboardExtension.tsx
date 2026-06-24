@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// Dynamically import Tldraw with no SSR to prevent hydration and window issues
-const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), { ssr: false });
+import "tldraw/tldraw.css"; // required for Tldraw UI
 
 class TldrawErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: { children: React.ReactNode }) {
