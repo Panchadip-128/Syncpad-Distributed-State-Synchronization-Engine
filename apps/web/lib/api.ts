@@ -61,12 +61,14 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(url, mergedOptions);
 
     if (!response.ok) {
-      let errorMessage = "An error occurred";
+      let errorMessage = `API Error ${response.status}`;
       try {
         const errorData = await response.json();
         errorMessage = errorData.detail || errorMessage;
       } catch (e) {
-        errorMessage = response.statusText;
+        if (response.statusText) {
+          errorMessage += `: ${response.statusText}`;
+        }
       }
       throw new Error(errorMessage);
     }
