@@ -57,27 +57,6 @@ async function start() {
       console.log(`[onDisconnect] Client left document: ${documentName}`);
     },
 
-    async onLoadDocument(data: any) {
-      const { documentName, document } = data;
-      const apiUrl = process.env.API_URL || "http://localhost:8000";
-      try {
-        const response = await fetch(`${apiUrl}/docs/${documentName}/snapshot/latest`);
-        if (response.ok) {
-          const json = await response.json();
-          if (json.content_b64) {
-            const binaryString = Buffer.from(json.content_b64, 'base64');
-            Y.applyUpdate(document, binaryString);
-            console.log(`[onLoadDocument] Restored latest auto-save for ${documentName}`);
-          } else {
-            console.log(`[onLoadDocument] No previous state found for ${documentName}`);
-          }
-        }
-      } catch (e: any) {
-        console.warn(`[onLoadDocument] Could not fetch latest state from API: ${e.message}`);
-      }
-      return document;
-    },
-
     async onStoreDocument(data: any) {
       const { documentName, document } = data;
       console.log(`[onStoreDocument] Persisting document: ${documentName}`);

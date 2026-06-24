@@ -143,17 +143,6 @@ async def create_snapshot(doc_id: str, snap_data: SnapshotCreate, db: AsyncSessi
     await db.commit()
     return {"status": "success"}
 
-@router.get("/{doc_id}/snapshot/latest")
-async def get_latest_snapshot(doc_id: str, db: AsyncSession = Depends(get_db)):
-    # Called by Hocuspocus server on document load
-    snap_result = await db.execute(
-        select(Snapshot).where(Snapshot.document_id == doc_id).order_by(Snapshot.created_at.desc()).limit(1)
-    )
-    snap = snap_result.scalars().first()
-    if not snap:
-        return {"content_b64": None}
-    return {"content_b64": snap.content_b64}
-
 @router.get("/{doc_id}/snapshots", response_model=List[SnapshotResponse])
 async def list_snapshots(doc_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Verify owner
