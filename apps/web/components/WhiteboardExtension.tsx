@@ -90,6 +90,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
 
   // Initialize the Tldraw store only on the client side to prevent Next.js SSR/hydration crashes
   const [store, setStore] = useState<any>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     // Only run on the client
@@ -105,8 +106,9 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
       }
       setStore(newStore);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating Tldraw store:", err);
+      setInitError(err.message || String(err));
     }
   }, []);
 
@@ -257,7 +259,12 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         {/* Render Tldraw Editor */}
         <div className="w-full h-full bg-[#1e1e1e] relative">
           <WhiteboardErrorBoundary>
-            {store ? (
+            {initError ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-red-400 bg-red-950/20 p-4">
+                <span className="font-bold mb-2">Failed to initialize whiteboard:</span>
+                <span className="text-xs font-mono bg-black/50 p-2 rounded max-w-full overflow-hidden text-ellipsis">{initError}</span>
+              </div>
+            ) : store ? (
               <Tldraw store={store} onMount={handleMount} autoFocus={false} />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-500">Loading Whiteboard...</div>
