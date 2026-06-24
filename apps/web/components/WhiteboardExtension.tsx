@@ -4,8 +4,45 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import { Maximize2, Minimize2, PenTool, RefreshCw } from "lucide-react";
-import { Tldraw, Editor as TldrawEditor, getSnapshot } from "tldraw";
+import { Tldraw, Editor as TldrawEditor, getSnapshot, createTLStore, defaultShapeUtils, loadSnapshot } from "tldraw";
 import "tldraw/tldraw.css";
+
+class WhiteboardErrorBoundary extends React.Component<any, { hasError: boolean, error: Error | null }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Whiteboard crashed:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-red-950/20 text-red-400 p-6 overflow-auto">
+          <h2 className="text-lg font-bold mb-2">Whiteboard Crashed</h2>
+          <pre className="text-xs whitespace-pre-wrap font-mono bg-black/50 p-4 rounded-md border border-red-900/50 max-w-full">
+            {this.state.error?.message || "Unknown error"}
+            {"\n\n"}
+            {this.state.error?.stack}
+          </pre>
+          <button 
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="mt-4 px-4 py-2 bg-red-900/50 hover:bg-red-800/50 rounded-md transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function WhiteboardBlock({ node, updateAttributes }: any) {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,28 +88,32 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
     }, 600);
   }, []);
 
+  // Initialize the Tldraw store only on the client side to prevent Next.js SSR/hydration crashes
+  const [store, setStore] = useState<any>(null);
+
+  useEffect(() => {
+    // Only run on the client
+    if (typeof window === "undefined") return;
+
+    try {
+      const newStore = createTLStore({ shapeUtils: defaultShapeUtils });
+      if (node.attrs.snapshot) {
+        const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
+        if (parsed && parsed.document) {
+          loadSnapshot(newStore, parsed);
+        }
+        lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
+      }
+      setStore(newStore);
+    } catch (err) {
+      console.error("Error creating Tldraw store:", err);
+    }
+  }, []);
+
   // Handle initialization/mounting of the Tldraw editor instance
   const handleMount = useCallback(
     (tldrawEditor: TldrawEditor) => {
       tldrawEditorRef.current = tldrawEditor;
-
-      // Load initial snapshot if present in node attributes
-      if (node.attrs.snapshot) {
-        try {
-          isRemoteChange.current = true;
-          const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
-          if (parsed && parsed.document) {
-            import("tldraw").then(({ loadSnapshot }) => {
-              loadSnapshot(tldrawEditor.store, parsed);
-            });
-          }
-          lastSavedSnapshotStrRef.current = typeof node.attrs.snapshot === 'string' ? node.attrs.snapshot : JSON.stringify(node.attrs.snapshot);
-        } catch (err) {
-          console.error("Error loading initial whiteboard snapshot:", err);
-        } finally {
-          isRemoteChange.current = false;
-        }
-      }
 
       // Listen to local user changes
       const cleanup = tldrawEditor.store.listen(() => {
@@ -85,7 +126,7 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
         tldrawEditorRef.current = null;
       };
     },
-    []
+    [scheduleSave]
   );
 
   // Sync incoming changes from remote collaborators via TipTap/Yjs attributes
@@ -101,13 +142,23 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
       if (remoteSnapshotStr !== lastSavedSnapshotStrRef.current) {
         isRemoteChange.current = true;
         const parsed = typeof node.attrs.snapshot === 'string' ? JSON.parse(node.attrs.snapshot) : node.attrs.snapshot;
+        
         if (parsed && parsed.document) {
-          import("tldraw").then(({ getSnapshot, loadSnapshot }) => {
-            const currentSnap = getSnapshot(tldrawEditor.store);
-            loadSnapshot(tldrawEditor.store, {
-              document: parsed.document,
-              session: currentSnap.session,
-            });
+          const incomingRecords = Object.values(parsed.document) as any[];
+          
+          tldrawEditor.store.mergeRemoteChanges(() => {
+            tldrawEditor.store.put(incomingRecords);
+            
+            // Clean up deleted shapes or assets that exist locally but not in the incoming document
+            const incomingIds = new Set(incomingRecords.map(r => r.id));
+            const currentRecords = tldrawEditor.store.allRecords();
+            const toRemove = currentRecords
+              .filter(r => !incomingIds.has(r.id) && (r.typeName === 'shape' || r.typeName === 'asset'))
+              .map(r => r.id);
+              
+            if (toRemove.length > 0) {
+              tldrawEditor.store.remove(toRemove);
+            }
           });
         }
         lastSavedSnapshotStrRef.current = remoteSnapshotStr;
@@ -205,7 +256,13 @@ export function WhiteboardBlock({ node, updateAttributes }: any) {
 
         {/* Render Tldraw Editor */}
         <div className="w-full h-full bg-[#1e1e1e] relative">
-          <Tldraw onMount={handleMount} autoFocus={false} />
+          <WhiteboardErrorBoundary>
+            {store ? (
+              <Tldraw store={store} onMount={handleMount} autoFocus={false} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-500">Loading Whiteboard...</div>
+            )}
+          </WhiteboardErrorBoundary>
         </div>
       </div>
     </NodeViewWrapper>
