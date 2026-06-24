@@ -1,149 +1,55 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
-import React, { useState, useEffect, useRef, useCallback, memo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Maximize2, Minimize2, Pencil } from "lucide-react";
-import dynamic from "next/dynamic";
-
-// Tldraw CSS is now imported globally at the bottom of globals.css
-
-// Dynamic import with no SSR (Tldraw uses browser-only APIs)
-const Tldraw = dynamic(() => import("tldraw").then((m) => m.Tldraw), {
-  ssr: false,
-  loading: () => (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f1f0ef",
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            border: "3px solid #6366f1",
-            borderTopColor: "transparent",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-            margin: "0 auto 12px",
-          }}
-        />
-        <span style={{ color: "#64748b", fontSize: 14 }}>
-          Loading whiteboard…
-        </span>
-      </div>
-    </div>
-  ),
-});
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function isTldrawSnapshot(val: unknown): val is { store: unknown; schema: unknown } {
-  return (
-    typeof val === "object" &&
-    val !== null &&
-    "store" in val &&
-    "schema" in val
-  );
-}
-
-// ── WhiteboardCanvas ──────────────────────────────────────────────────────────
-//
-// This component is memo'd. It receives initialSnapshot ONCE and never
-// re-renders from prop changes — this eliminates the draw→save→re-render→
-// loadSnapshot→draw infinite loop that caused the black/white screen.
-
-interface WhiteboardCanvasProps {
-  initialSnapshot: string | null;
-  onSave: (snapshot: string) => void;
-}
-
-const WhiteboardCanvas = memo(function WhiteboardCanvas({
-  initialSnapshot,
-  onSave,
-}: WhiteboardCanvasProps) {
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onSaveRef = useRef(onSave);
-
-  // Keep onSave ref current without triggering re-renders
-  useEffect(() => {
-    onSaveRef.current = onSave;
-  }, [onSave]);
-
-  // Stable mount handler — empty deps so it's created once only
-  const handleMount = useCallback((editor: any) => {
-    // Load saved snapshot once on mount
-    if (initialSnapshot) {
-      try {
-        const parsed = JSON.parse(initialSnapshot);
-        if (isTldrawSnapshot(parsed)) {
-          editor.store.loadSnapshot(parsed);
-        }
-      } catch {
-        // Corrupted or legacy format — start with a blank canvas
-      }
-    }
-
-    // Debounce-save user drawing changes (1.5s) to avoid hammering Yjs/TipTap
-    editor.store.listen(
-      () => {
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-          try {
-            const snapshot = editor.store.getSnapshot();
-            onSaveRef.current(JSON.stringify(snapshot));
-          } catch {
-            /* serialisation failure — ignore */
-          }
-        }, 1500);
-      },
-      { source: "user", scope: "document" }
-    );
-  }, []); // intentionally empty — handleMount must be stable
-
-  // Use position:absolute + inset:0 so Tldraw fills the container and its
-  // toolbar overlays render correctly regardless of parent layout.
-  // All styles are inline to bypass our global Tailwind/dark-mode CSS.
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        // Tldraw is a light-mode tool — override our dark html.dark CSS cascade
-        colorScheme: "light",
-        // Explicitly unset CSS custom properties that our @theme overrides,
-        // which Tldraw also uses internally (e.g. --color-background).
-        // Using "initial" makes custom props revert to Tldraw's own CSS values.
-      }}
-      className="tldraw-isolation-root"
-    >
-      <Tldraw onMount={handleMount} />
-    </div>
-  );
-});
 
 // ── WhiteboardComponent ───────────────────────────────────────────────────────
+//
+// Renders Tldraw inside an IFRAME pointing to /whiteboard.
+// The iframe gets a completely separate DOM & CSS context — zero
+// possibility of our dark-mode globals leaking into Tldraw's styles.
+// Communication is via window.postMessage.
 
 function WhiteboardComponent({ node, updateAttributes }: any) {
   const [isOpen, setIsOpen] = useState(false);
-
-  // Freeze the snapshot at mount time — never pass updated node.attrs.snapshot
-  // down to WhiteboardCanvas to avoid triggering re-render/reload loops.
-  const [frozenSnapshot] = useState<string | null>(() => node.attrs.snapshot ?? null);
-
-  // Keep updateAttributes fresh via a ref (updated in useEffect, not render)
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const updateAttrsRef = useRef(updateAttributes);
+
+  // Keep updateAttributes fresh via a ref
   useEffect(() => {
     updateAttrsRef.current = updateAttributes;
   }, [updateAttributes]);
 
-  const handleSave = useCallback((snapshot: string) => {
-    updateAttrsRef.current({ snapshot });
-  }, []);
+  // Freeze snapshot at mount time — never re-send on every render
+  const [frozenSnapshot] = useState<string | null>(() => node.attrs.snapshot ?? null);
+
+  // Listen for messages from the iframe
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handler = (event: MessageEvent) => {
+      // Only accept messages from our own iframe
+      if (event.source !== iframeRef.current?.contentWindow) return;
+
+      if (event.data?.type === "whiteboard-ready") {
+        // Iframe is ready — send it the saved snapshot
+        if (frozenSnapshot) {
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: "load-snapshot", snapshot: frozenSnapshot },
+            "*"
+          );
+        }
+      }
+
+      if (event.data?.type === "save-snapshot") {
+        // Iframe saved new drawing data — persist to TipTap node attributes
+        updateAttrsRef.current({ snapshot: event.data.snapshot });
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isOpen, frozenSnapshot]);
 
   return (
     <NodeViewWrapper as="div" style={{ margin: "24px 0" }}>
@@ -264,11 +170,21 @@ function WhiteboardComponent({ node, updateAttributes }: any) {
             </button>
           )}
 
-          {/* Tldraw — only mounted when open */}
+          {/* Tldraw — rendered inside an iframe for complete CSS isolation */}
           {isOpen && (
-            <WhiteboardCanvas
-              initialSnapshot={frozenSnapshot}
-              onSave={handleSave}
+            <iframe
+              ref={iframeRef}
+              src="/whiteboard"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                border: "none",
+                background: "#f8f9fa",
+              }}
+              title="Collaborative Whiteboard"
+              allow="clipboard-read; clipboard-write"
             />
           )}
         </div>

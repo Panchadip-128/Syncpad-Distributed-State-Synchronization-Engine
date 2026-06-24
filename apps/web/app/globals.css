@@ -6,7 +6,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Removed tldraw import from here, moving to bottom */
+
+
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS — SyncPad 2026 Design System
@@ -487,31 +488,7 @@
 .delay-500 { animation-delay: 500ms; }
 
 /* ─────────────────────────────────────────────
-   TLDRAW CSS VARIABLE ISOLATION
-   Our @theme inline block defines --color-background
-   as our dark #080a0f value. Tldraw v5 uses the same
-   CSS custom property for its canvas background.
-   Resetting it on the isolation root lets tldraw.css
-   values take effect inside the whiteboard container.
-   ───────────────────────────────────────────── */
-.tldraw-isolation-root {
-  /* Unset CSS variables that collide with Tldraw internals */
-  --color-background: initial;
-  --color-text: initial;
-  --color-primary: initial;
-  --color-low: initial;
-  --color-medium: initial;
-  --color-high: initial;
-  --color-hint: initial;
-  --color-selected: initial;
-  /* Prevent our global border utility from bleeding in */
-  --border: initial;
-}
-
 /* Spin animation for the loading placeholder */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
-/* IMPORT TLDRAW AT THE END TO ENSURE IT WINS SPECIFICITY AND IS NOT PURGED BY NEXT.JS */
-@import "tldraw/tldraw.css";
