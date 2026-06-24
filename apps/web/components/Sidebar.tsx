@@ -88,7 +88,8 @@ export default function Sidebar({ editor, documentId }: SidebarProps) {
     setIsOpen(true);
 
     try {
-      const response = await fetch("http://localhost:8000/ai/assist", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/ai/assist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
