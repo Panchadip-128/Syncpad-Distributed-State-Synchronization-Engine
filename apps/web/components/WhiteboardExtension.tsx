@@ -174,7 +174,7 @@ function WhiteboardComponent({ node, updateAttributes }: any) {
           {isOpen && (
             <iframe
               ref={iframeRef}
-              src="/whiteboard"
+              src="/whiteboard.html"
               style={{
                 position: "absolute",
                 inset: 0,
